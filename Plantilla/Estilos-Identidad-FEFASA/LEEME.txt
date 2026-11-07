@@ -1,0 +1,42 @@
+﻿Identidad visual FEFASA / FEGEC (manual 20 jul 2026)
+====================================================
+Misma plantilla Spike. Copia estas carpetas sobre wwwroot de tu proyecto.
+
+Contenido
+---------
+assets/css/fegec-identidad.css     <-- colores, botones, tablas, SweetAlert
+assets/fonts/poppins/              <-- Poppins Regular, SemiBold, Bold
+assets/images/FEGEC.png            <-- logo sidebar / login
+assets/images/FefasaIco.png        <-- favicon
+assets/images/FefasaLogo.png       <-- logo extra
+
+Colores
+-------
+Verde  #1B5E35
+Rojo   #C41E1E
+Texto  #222222
+Gris   #6E6E6E
+Fondo  #F2F2F2
+
+Como integrarlo
+---------------
+1. Copia la carpeta assets/ dentro de wwwroot (o la ruta equivalente de Spike).
+   Las rutas internas del CSS asumen:
+     css/fegec-identidad.css
+     fonts/poppins/*.ttf
+
+2. En el layout (y en login si es pagina suelta), DESPUES de styles.css:
+
+   <link rel="stylesheet" href="~/assets/css/styles.css" />
+   <link rel="stylesheet" href="~/assets/css/fegec-identidad.css" />
+
+3. El html debe quedar asi (Spike Blue_Theme; el CSS lo pinta de verde):
+
+   <html lang="es" data-bs-theme="light" data-color-theme="Blue_Theme">
+
+4. Logo y favicon (opcional):
+
+   <link rel="shortcut icon" type="image/png" href="~/assets/images/FefasaIco.png" />
+   <img src="~/assets/images/FEGEC.png" alt="Logo FEGEC" />
+
+No hace falta tocar styles.css de Spike. Este archivo va encima y solo ajusta la marca.
