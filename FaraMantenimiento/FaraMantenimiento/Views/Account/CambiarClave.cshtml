@@ -1,0 +1,39 @@
+@{
+    ViewData["Title"] = "Cambiar clave";
+    Layout = "_Layout";
+    var sinClave = ViewBag.SinClave is bool b && b;
+}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-5">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="h5 mb-1">@(sinClave ? "Crear clave personal" : "Cambiar clave")</h1>
+                <p class="text-muted small mb-4">
+                    @(sinClave
+                        ? "Entró con la clave temporal. Cree su clave personal; después la clave temporal dejará de funcionar para su usuario."
+                        : "Ingrese su clave actual y la nueva clave.")
+                </p>
+                <form method="post" asp-action="CambiarClave" autocomplete="off">
+                    @Html.AntiForgeryToken()
+                    @if (!sinClave)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label" for="claveActual">Clave actual</label>
+                            <input class="form-control" type="password" id="claveActual" name="claveActual" required autocomplete="current-password" />
+                        </div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label" for="claveNueva">Nueva clave</label>
+                        <input class="form-control" type="password" id="claveNueva" name="claveNueva" required minlength="8" autocomplete="new-password" />
+                        <div class="form-text">Mínimo 8 caracteres.</div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="claveConfirmacion">Confirmar nueva clave</label>
+                        <input class="form-control" type="password" id="claveConfirmacion" name="claveConfirmacion" required minlength="8" autocomplete="new-password" />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" style="min-height:40px;">Guardar clave</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

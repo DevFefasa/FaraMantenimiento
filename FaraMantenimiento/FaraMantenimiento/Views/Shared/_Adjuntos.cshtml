@@ -1,0 +1,18 @@
+﻿<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Adjuntos</h2>
+        @if (ViewData["AdjuntosHtml"] != null)
+        {
+            @Html.Raw(ViewData["AdjuntosHtml"])
+        }
+        else
+        {
+            <p class="text-muted mb-0">Aún no hay archivos adjuntos.</p>
+        }
+        @if (ViewData["PuedeSubir"] is true)
+        {
+            <hr />
+            <partial name="_AdjuntosInput" />
+        }
+    </div>
+</div>

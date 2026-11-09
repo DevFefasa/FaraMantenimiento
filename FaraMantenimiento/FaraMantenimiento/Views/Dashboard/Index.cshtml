@@ -1,0 +1,138 @@
+﻿@using FM.OrigenDatos.Modelos.Reportes
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["SinTarjeta"] = true;
+    ViewBag.FiltroController = "Dashboard";
+    ViewBag.FiltroAction = "Index";
+    var resumen = ViewBag.Resumen as ReporteResumenModelo ?? new ReporteResumenModelo();
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-0">Dashboard</h1>
+        <p class="text-muted mb-0">Tablero de indicadores de mantenimiento</p>
+    </div>
+</div>
+
+<partial name="~/Views/Reportes/_Filtros.cshtml" />
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Recibidos</div>
+            @* Callers: DashboardController. Instrucción: responsive 375/768/1366. *@
+            <div class="fs-2 fw-semibold text-primary">@resumen.FiRecibidos</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Abiertos / backlog</div>
+            <div class="fs-2 fw-semibold" style="color:#c49200">@resumen.FiBacklog</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Cerrados</div>
+            <div class="fs-2 fw-semibold text-primary">@resumen.FiCerrados</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small">% SLA solución</div>
+            <div class="fs-2 fw-semibold text-primary">@(resumen.FnPctSlaSolucion?.ToString("0.#") ?? "-")%</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small">MTTR (h)</div>
+            <div class="h3 fw-semibold mb-0">@(resumen.FnHorasSolucionPromedio?.ToString("0.##") ?? "-")</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Resp. promedio (h)</div>
+            <div class="h3 fw-semibold mb-0">@(resumen.FnHorasRespuestaPromedio?.ToString("0.##") ?? "-")</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Reincidentes</div>
+            <div class="h3 fw-semibold mb-0 text-danger">@resumen.FiReincidentes</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Satisfacción</div>
+            <div class="h3 fw-semibold mb-0">@(resumen.FnSatisfaccionPromedio?.ToString("0.##") ?? "-") / 5</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-7">
+        <div class="card h-100"><div class="card-body">
+            <h2 class="h5 mb-3">Tendencia mensual</h2>
+            <div id="chartTendencia" style="min-height:280px"></div>
+        </div></div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-5">
+        <div class="card h-100"><div class="card-body">
+            <h2 class="h5 mb-3">Cumplimiento SLA</h2>
+            <div id="chartSla" style="min-height:280px"></div>
+        </div></div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-5">
+        <div class="card h-100"><div class="card-body">
+            <h2 class="h5 mb-3">Preventivo vs correctivo</h2>
+            <div id="chartTipo" style="min-height:280px"></div>
+        </div></div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="~/assets/libs/apexcharts/dist/apexcharts.min.js" asp-append-version="true"></script>
+<script>
+(function () {
+  const verde = '#1B5E35', rojo = '#C41E1E', gris = '#6E6E6E', amarillo = '#F5C400';
+  const tendencia = @Html.Raw(ViewBag.TendenciaJson ?? "[]");
+  const sla = @Html.Raw(ViewBag.SlaJson ?? "[]");
+  const tipo = @Html.Raw(ViewBag.TipoJson ?? "[]");
+
+  if (document.querySelector('#chartTendencia')) {
+    new ApexCharts(document.querySelector('#chartTendencia'), {
+      chart: { type: 'area', height: 280, toolbar: { show: false }, fontFamily: 'Poppins, Arial, sans-serif' },
+      colors: [verde, gris],
+      stroke: { curve: 'smooth', width: 2 },
+      dataLabels: { enabled: false },
+      series: [
+        { name: 'Recibidos', data: tendencia.map(x => x.recibidos) },
+        { name: 'Cerrados', data: tendencia.map(x => x.cerrados) }
+      ],
+      xaxis: { categories: tendencia.map(x => x.periodo) },
+      fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.05 } }
+    }).render();
+  }
+
+  if (document.querySelector('#chartSla')) {
+    new ApexCharts(document.querySelector('#chartSla'), {
+      chart: { type: 'bar', height: 280, toolbar: { show: false }, fontFamily: 'Poppins, Arial, sans-serif' },
+      colors: [verde],
+      plotOptions: { bar: { borderRadius: 6, columnWidth: '45%' } },
+      dataLabels: { enabled: true, formatter: v => v + '%' },
+      series: [{ name: '% SLA solución', data: sla.map(x => x.pct) }],
+      xaxis: { categories: sla.map(x => x.nombre) },
+      yaxis: { max: 100 }
+    }).render();
+  }
+
+  if (document.querySelector('#chartTipo')) {
+    new ApexCharts(document.querySelector('#chartTipo'), {
+      chart: { type: 'donut', height: 280, fontFamily: 'Poppins, Arial, sans-serif' },
+      colors: [verde, rojo, amarillo, gris, '#0d6efd', '#6610f2', '#20c997'],
+      labels: tipo.map(x => x.nombre),
+      series: tipo.map(x => x.tickets),
+      legend: { position: 'bottom' }
+    }).render();
+  }
+})();
+</script>
+}

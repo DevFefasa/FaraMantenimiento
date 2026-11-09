@@ -1,0 +1,22 @@
+﻿@{
+    var maxMb = ViewData["MaxMb"] as int? ?? 10;
+    var maxCount = ViewData["MaxCount"] as int? ?? 10;
+    var inputName = ViewData["InputName"] as string ?? "Adjuntos";
+    var accept = ViewData["Accept"] as string ?? "image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx";
+    var label = ViewData["Label"] as string ?? "Adjuntos (opcional)";
+}
+<div class="mb-3 js-dropzone"
+     data-input-name="@inputName"
+     data-max-mb="@maxMb"
+     data-max-count="@maxCount"
+     data-accept="@accept">
+    <label class="form-label">@label</label>
+    <input type="file" name="@inputName" multiple accept="@accept" capture="environment" />
+    <div data-dz-surface tabindex="0" role="button"
+         aria-label="Arrastra archivos aquí o toca para elegir / tomar foto">
+        <p class="dz-title">Arrastra archivos aquí o toca para elegir</p>
+        <p class="dz-hint">Fotos, videos o documentos · máx. @maxMb MB c/u · hasta @maxCount por subida · en móvil puede abrir la cámara</p>
+    </div>
+    <div data-dz-errors class="d-none"></div>
+    <div data-dz-list></div>
+</div>

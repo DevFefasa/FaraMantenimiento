@@ -1,0 +1,127 @@
+@using System.Collections
+@using FM.OrigenDatos.Modelos.Catalogos
+@* Callers: CatalogosController.Entidad
+   API: lista + modal CRUD + activar + Excel activos; fara-tabla-movil + ajaxPost
+   User instruction: "CRUD (lista + modal crear/editar + activar/desactivar)" + carga Excel + responsive 375px *@
+@{
+    var tipo = (string)(ViewData["Tipo"] ?? "");
+    var titulo = ViewData["Title"] as string ?? "Catálogo";
+    var combos = ViewBag.Combos as CatalogoCombosModelo;
+    var items = Model as IEnumerable ?? Array.Empty<object>();
+}
+@Html.AntiForgeryToken()
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <a asp-action="Index" class="small text-decoration-none">← Catálogos</a>
+        <h1 class="h4 mb-0">@titulo</h1>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        @if (tipo == "activos")
+        {
+            <a class="btn btn-outline-secondary" asp-action="PlantillaActivos" style="min-height:40px">Plantilla Excel</a>
+            <label class="btn btn-outline-primary mb-0" style="min-height:40px;cursor:pointer">Cargar Excel<input type="file" id="fileExcel" accept=".xlsx,.xls" class="d-none" /></label>
+        }
+        <button type="button" class="btn btn-primary" id="btnNuevo" style="min-height:40px">@(tipo == "estados" ? "Solo editar" : "Nuevo")</button>
+    </div>
+</div>
+<div id="msgBox" class="d-none"></div>
+<div class="table-responsive">
+<table class="table table-hover align-middle fara-tabla-movil">
+<thead><tr>
+@switch (tipo) {
+    case "regiones": <th>Código</th><th>Nombre</th><th>Estado</th><th class="fara-col-accion"></th> break;
+    case "sucursales": <th>Código</th><th>Nombre</th><th>Tipo</th><th>Región</th><th>Estado</th><th class="fara-col-accion"></th> break;
+    case "ubicaciones": <th>Código</th><th>Nombre</th><th>Sucursal</th><th>Estado</th><th class="fara-col-accion"></th> break;
+    case "activos": <th>Código</th><th>Nombre</th><th>Sucursal</th><th>Categoría</th><th>Estado</th><th class="fara-col-accion"></th> break;
+    case "tipos": case "categorias": case "motivos": <th>Código</th><th>Nombre</th><th>Orden</th><th>Estado</th><th class="fara-col-accion"></th> break;
+    case "prioridades": <th>Código</th><th>Nombre</th><th>Resp. (h)</th><th>Sol. (h)</th><th>Estado</th><th class="fara-col-accion"></th> break;
+    case "estados": <th>Código</th><th>Nombre</th><th>Color</th><th>Orden</th><th>Estado</th><th class="fara-col-accion"></th> break;
+    case "proveedores": <th>Código</th><th>Nombre</th><th>Especialidad</th><th>Estado</th><th class="fara-col-accion"></th> break;
+    case "tecnicos": <th>Código</th><th>Nombre</th><th>Categoría</th><th>Estado</th><th class="fara-col-accion"></th> break;
+    case "parametros": <th>Clave</th><th>Valor</th><th>Descripción</th><th>Estado</th><th class="fara-col-accion"></th> break;
+}
+</tr></thead>
+<tbody>
+@foreach (dynamic row in items) {
+<tr>
+@switch (tipo) {
+    case "regiones":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+    case "sucursales":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Tipo">@row.FcTipo</td><td data-label="Región">@row.FcRegionNombre</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+    case "ubicaciones":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Sucursal">@row.FcSucursalNombre</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+    case "activos":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Sucursal">@row.FcSucursalNombre</td><td data-label="Categoría">@row.FcCategoriaNombre</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+    case "tipos": case "categorias": case "motivos":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Orden">@row.FiOrden</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+    case "prioridades":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Resp. (h)">@row.FiHorasRespuesta</td><td data-label="Sol. (h)">@row.FiHorasSolucion</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+    case "estados":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Color">@row.FcColor</td><td data-label="Orden">@row.FiOrden</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+    case "proveedores":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Especialidad">@row.FcEspecialidad</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+    case "tecnicos":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Categoría">@row.FcCategoriaNombre</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+    case "parametros":
+        <td data-label="Clave">@row.FcClave</td><td data-label="Valor">@row.FcValor</td><td data-label="Descripción">@row.FcDescripcion</td><td data-label="Estado">@(row.FbActivo ? "Activo" : "Inactivo")</td> break;
+}
+<td class="fara-col-accion" data-label="Acciones">
+<button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="@row.FiId" style="min-height:40px">Editar</button>
+<button type="button" class="btn btn-sm btn-outline-secondary btn-activar" data-id="@row.FiId" data-activo="@(row.FbActivo ? "false" : "true")" style="min-height:40px">@(row.FbActivo ? "Desactivar" : "Activar")</button>
+</td>
+</tr>
+}
+</tbody>
+</table>
+</div>
+
+<div class="modal fade" id="modalCat" tabindex="-1" aria-hidden="true">
+<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+<div class="modal-header"><h2 class="modal-title h5" id="modalTitulo">Nuevo</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+<div class="modal-body"><form id="formCat" class="row g-3"></form></div>
+<div class="modal-footer">
+<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="min-height:40px">Cancelar</button>
+<button type="button" class="btn btn-primary" id="btnGuardar" style="min-height:40px">Guardar</button>
+</div></div></div></div>
+
+<script>
+(function(){
+ const tipo=@Html.Raw(System.Text.Json.JsonSerializer.Serialize(tipo));
+ const regiones=@Html.Raw(System.Text.Json.JsonSerializer.Serialize((combos?.Regiones ?? new List<CatalogoItemModelo>()).Select(x=>new{x.FiId,x.FcNombre})));
+ const sucursales=@Html.Raw(System.Text.Json.JsonSerializer.Serialize((combos?.Sucursales ?? new List<CatalogoItemModelo>()).Select(x=>new{x.FiId,x.FcNombre})));
+ const categorias=@Html.Raw(System.Text.Json.JsonSerializer.Serialize((combos?.Categorias ?? new List<CatalogoItemModelo>()).Select(x=>new{x.FiId,x.FcNombre})));
+ const ubicaciones=@Html.Raw(System.Text.Json.JsonSerializer.Serialize((combos?.Ubicaciones ?? new List<CatalogoItemModelo>()).Select(x=>new{x.FiId,x.FcNombre,x.FiSucursalId})));
+ const modal=bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCat'));
+ const form=document.getElementById('formCat');
+ function msg(ok,t){const b=document.getElementById('msgBox');b.className='alert '+(ok?'alert-success':'alert-danger');b.textContent=t;b.classList.remove('d-none');}
+ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+ function opt(list,val,label){return `<option value="">${esc(label||'Seleccione...')}</option>`+list.map(x=>`<option value="${esc(x.FiId)}" ${val&&String(val)===String(x.FiId)?'selected':''}>${esc(x.FcNombre)}</option>`).join('');}
+ function field(h){return `<div class="col-12 col-md-6">${h}</div>`;}
+ function inp(n,l,v,a){return `<label class="form-label">${esc(l)}</label><input class="form-control" name="${esc(n)}" id="${esc(n)}" value="${esc(v??'')}" ${a||''}/>`;}
+ function sel(n,l,o){return `<label class="form-label">${esc(l)}</label><select class="form-select" name="${esc(n)}" id="${esc(n)}">${o}</select>`;}
+ function chk(n,l,on){return `<div class="form-check mt-4"><input class="form-check-input" type="checkbox" name="${esc(n)}" id="${esc(n)}" value="true" ${on?'checked':''}/><label class="form-check-label" for="${esc(n)}">${esc(l)}</label></div>`;}
+ function buildForm(item){
+  const p=item||{}; const g=(a,b)=>p[a]??p[b]??'';
+  let html=`<input type="hidden" name="fiId" value="${esc(g('fiId','FiId'))}"/>`;
+  if(tipo==='parametros'){html+=field(inp('fcClave','Clave',g('fcClave','FcClave'),item?'readonly':'required'))+field(inp('fcValor','Valor',g('fcValor','FcValor'),'required'))+`<div class="col-12">${inp('fcDescripcion','Descripción',g('fcDescripcion','FcDescripcion'),'')}</div>`;}
+  else if(tipo==='estados'){html+=field(inp('fcCodigo','Código',g('fcCodigo','FcCodigo'),'readonly required'))+field(inp('fcNombre','Nombre',g('fcNombre','FcNombre'),'required'))+field(inp('fcColor','Color',g('fcColor','FcColor')||'#6c757d',''))+field(inp('fiOrden','Orden',g('fiOrden','FiOrden')||0,'type="number"'))+field(chk('fbFinal','Es final',!!(p.fbFinal??p.FbFinal)));}
+  else{html+=field(inp('fcCodigo','Código',g('fcCodigo','FcCodigo'),'required'))+field(inp('fcNombre','Nombre',g('fcNombre','FcNombre'),'required'));}
+  if(tipo==='sucursales'){html+=field(sel('fcTipo','Tipo',['SUCURSAL','AREA','DEPARTAMENTO'].map(t=>`<option value="${esc(t)}" ${g('fcTipo','FcTipo')===t?'selected':''}>${esc(t)}</option>`).join('')))+field(sel('fiRegionId','Región',opt(regiones,g('fiRegionId','FiRegionId'))))+field(inp('fcDireccion','Dirección',g('fcDireccion','FcDireccion'),''))+field(inp('fcTelefono','Teléfono',g('fcTelefono','FcTelefono'),''));}
+  if(tipo==='ubicaciones') html+=field(sel('fiSucursalId','Sucursal',opt(sucursales,g('fiSucursalId','FiSucursalId'))));
+  if(tipo==='activos'){html+=field(inp('fcMarca','Marca',g('fcMarca','FcMarca'),''))+field(inp('fcModelo','Modelo',g('fcModelo','FcModelo'),''))+field(inp('fcSerie','Serie',g('fcSerie','FcSerie'),''))+field(sel('fiSucursalId','Sucursal',opt(sucursales,g('fiSucursalId','FiSucursalId'))))+field(sel('fiUbicacionId','Ubicación',opt(ubicaciones,g('fiUbicacionId','FiUbicacionId'),'(Opcional)')))+field(sel('fiCategoriaId','Categoría',opt(categorias,g('fiCategoriaId','FiCategoriaId'),'(Opcional)')))+field(inp('fdFechaInstalacion','Fecha instalación',(g('fdFechaInstalacion','FdFechaInstalacion')||'').toString().slice(0,10),'type="date"'));}
+  if(tipo==='tipos'){html+=field(inp('fiOrden','Orden',g('fiOrden','FiOrden')||0,'type="number"'))+field(chk('fbRequiereAprobacion','Requiere aprobación',p.fbRequiereAprobacion??p.FbRequiereAprobacion??true))+field(chk('fbEsPreventivo','Es preventivo',!!(p.fbEsPreventivo??p.FbEsPreventivo)))+field(chk('fbEsPostFalla','Es post-falla',!!(p.fbEsPostFalla??p.FbEsPostFalla)))+field(chk('fbRequiereFechaSugerida','Requiere fecha sugerida',!!(p.fbRequiereFechaSugerida??p.FbRequiereFechaSugerida)));}
+  if(tipo==='categorias'||tipo==='motivos') html+=field(inp('fiOrden','Orden',g('fiOrden','FiOrden')||0,'type="number"'));
+  if(tipo==='prioridades'){html+=field(inp('fiHorasRespuesta','Horas respuesta',g('fiHorasRespuesta','FiHorasRespuesta')||4,'type="number" min="1" required'))+field(inp('fiHorasSolucion','Horas solución',g('fiHorasSolucion','FiHorasSolucion')||24,'type="number" min="1" required'))+field(inp('fcColor','Color',g('fcColor','FcColor')||'#0d6efd',''))+field(inp('fiOrden','Orden',g('fiOrden','FiOrden')||0,'type="number"'));}
+  if(tipo==='proveedores'){html+=field(inp('fcRtn','RTN',g('fcRtn','FcRtn'),''))+field(inp('fcContacto','Contacto',g('fcContacto','FcContacto'),''))+field(inp('fcTelefono','Teléfono',g('fcTelefono','FcTelefono'),''))+field(inp('fcCorreo','Correo',g('fcCorreo','FcCorreo'),''))+field(inp('fcEspecialidad','Especialidad',g('fcEspecialidad','FcEspecialidad'),''));}
+  if(tipo==='tecnicos'){html+=field(inp('fcTelefono','Teléfono',g('fcTelefono','FcTelefono'),''))+field(sel('fiCategoriaId','Categoría',opt(categorias,g('fiCategoriaId','FiCategoriaId'),'(Opcional)')))+field(inp('fiUsuarioId','Usuario Id (opcional)',g('fiUsuarioId','FiUsuarioId'),'type="number"'));}
+  form.innerHTML=html;
+ }
+ document.getElementById('btnNuevo').addEventListener('click',()=>{if(tipo==='estados'){msg(false,'Use Editar en un estado existente');return;}document.getElementById('modalTitulo').textContent='Nuevo';buildForm(null);modal.show();});
+ document.querySelectorAll('.btn-editar').forEach(btn=>btn.addEventListener('click',async()=>{const data=await(await fetch(`/Catalogos/Obtener?tipo=${encodeURIComponent(tipo)}&id=${btn.dataset.id}`)).json();if(!(data.FbSucces||data.fbSucces)){msg(false,data.FcMensaje||data.fcMensaje);return;}document.getElementById('modalTitulo').textContent='Editar';buildForm(data.item);modal.show();}));
+ document.getElementById('btnGuardar').addEventListener('click',()=>{if(!form.reportValidity())return;const payload=Object.fromEntries(new FormData(form).entries());form.querySelectorAll('input[type=checkbox]').forEach(c=>{payload[c.name]=c.checked?'true':'false';});ajaxPost('/Catalogos/Guardar?tipo='+encodeURIComponent(tipo),payload).then(r=>{if(r.FbSucces||r.fbSucces)location.reload();else msg(false,r.FcMensaje||r.fcMensaje||'Error');});});
+ document.querySelectorAll('.btn-activar').forEach(btn=>btn.addEventListener('click',()=>ajaxPost('/Catalogos/Activar',{tipo,id:btn.dataset.id,activo:btn.dataset.activo==='true'}).then(r=>{if(r.FbSucces||r.fbSucces)location.reload();else msg(false,r.FcMensaje||r.fcMensaje);})));
+ const file=document.getElementById('fileExcel');
+ if(file)file.addEventListener('change',()=>{if(!file.files.length)return;const fd=new FormData();fd.append('archivo',file.files[0]);ajaxPost('/Catalogos/CargarActivos',fd).then(r=>{msg(!!(r.FbSucces||r.fbSucces),r.FcMensaje||r.fcMensaje||'Listo');if(r.FbSucces||r.fbSucces)setTimeout(()=>location.reload(),900);});});
+})();
+</script>

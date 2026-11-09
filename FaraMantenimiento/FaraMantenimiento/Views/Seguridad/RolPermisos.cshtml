@@ -1,0 +1,36 @@
+@model IEnumerable<FM.OrigenDatos.Modelos.Seguridad.PantallaModelo>
+@{
+    var rol = (FM.OrigenDatos.Modelos.Seguridad.RolModelo)ViewBag.Rol;
+    ViewData["Title"] = $"Permisos · {rol.FcNombre}";
+}
+<h1 class="h4 mb-3">Permisos de @rol.FcNombre (@rol.FcCodigo)</h1>
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">@TempData["Ok"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+<form method="post" asp-action="RolPermisos">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@rol.FiId" />
+    <div class="row g-2 mb-3">
+    @foreach (var p in Model)
+    {
+        <div class="col-12 col-md-6">
+            <div class="form-check border rounded p-3">
+                <input class="form-check-input" type="checkbox" name="pantallas" value="@p.FcCodigo" id="p_@p.FcCodigo" @(p.FbAsignado ? "checked" : null) />
+                <label class="form-check-label" for="p_@p.FcCodigo">
+                    <strong>@p.FcNombre</strong>
+                    <span class="text-muted small d-block">@p.FcCodigo</span>
+                </label>
+            </div>
+        </div>
+    }
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary" style="min-height:40px">Guardar permisos</button>
+        <a asp-action="Roles" class="btn btn-outline-secondary" style="min-height:40px">Volver</a>
+    </div>
+</form>

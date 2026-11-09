@@ -1,0 +1,36 @@
+@* Callers: CatalogosController.Index
+   API: tarjetas → Entidad?tipo=
+   User instruction: "indice con tarjetas y CRUD ... Responsive a 375px." *@
+@{
+    ViewData["Title"] = "Catálogos";
+    var cards = new (string Tipo, string Titulo, string Desc)[]
+    {
+        ("regiones", "Regiones", "Regiones geográficas"),
+        ("sucursales", "Sucursales / áreas", "Sucursales, áreas y departamentos"),
+        ("ubicaciones", "Ubicaciones", "Ubicaciones por sucursal"),
+        ("activos", "Activos", "Equipos e infraestructura + Excel"),
+        ("tipos", "Tipos de mantenimiento", "Correctivo, preventivo, emergencia…"),
+        ("categorias", "Categorías", "Eléctrico, plomería, etc."),
+        ("prioridades", "Prioridades", "Horas SLA de respuesta y solución"),
+        ("estados", "Estados", "Nombre, color y orden (código fijo)"),
+        ("motivos", "Motivos de espera", "Motivos al pausar un ticket"),
+        ("proveedores", "Proveedores", "Proveedores externos"),
+        ("tecnicos", "Técnicos", "Técnicos internos"),
+        ("parametros", "Parámetros", "DIAS_CIERRE_AUTOMATICO, MONEDA…")
+    };
+}
+<h1 class="h4 mb-3">Catálogos</h1>
+@if (TempData["Error"] != null) { <div class="alert alert-danger">@TempData["Error"]</div> }
+<div class="row g-3">
+@foreach (var c in cards)
+{
+    <div class="col-12 col-sm-6 col-lg-4">
+        <a asp-action="Entidad" asp-route-tipo="@c.Tipo" class="text-decoration-none text-reset d-block h-100">
+            <div class="border rounded-3 p-3 h-100" style="min-height:110px">
+                <div class="fw-semibold mb-1">@c.Titulo</div>
+                <div class="small text-muted">@c.Desc</div>
+            </div>
+        </a>
+    </div>
+}
+</div>

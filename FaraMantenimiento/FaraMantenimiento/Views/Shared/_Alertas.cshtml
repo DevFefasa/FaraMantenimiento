@@ -1,0 +1,40 @@
+@*
+  Callers: Views/Shared/_Layout.cshtml (<partial name="_Alertas" />).
+  No existe partial de alertas (Grep sin _Alertas).
+  Lee TempData["Exito"] / TempData["Error"] (string).
+  Instrucción: "Partial _Alertas para TempData[\"Exito\"]/[\"Error\"] con SweetAlert"
+*@
+@{
+    var exito = TempData["Exito"] as string;
+    var error = TempData["Error"] as string;
+}
+@if (!string.IsNullOrWhiteSpace(exito) || !string.IsNullOrWhiteSpace(error))
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.Swal) return;
+            @if (!string.IsNullOrWhiteSpace(exito))
+            {
+                <text>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Listo',
+                    text: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(exito)),
+                    confirmButtonText: 'Aceptar'
+                });
+                </text>
+            }
+            @if (!string.IsNullOrWhiteSpace(error))
+            {
+                <text>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Atención',
+                    text: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(error)),
+                    confirmButtonText: 'Aceptar'
+                });
+                </text>
+            }
+        });
+    </script>
+}

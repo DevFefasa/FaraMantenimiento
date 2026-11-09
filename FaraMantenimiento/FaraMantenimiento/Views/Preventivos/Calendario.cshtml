@@ -1,0 +1,183 @@
+@model FaraMantenimiento.ViewModels.Preventivos.PreventivoCalendarioViewModel
+@* Callers: PreventivosController.Calendario
+   API: grilla mensual desktop + lista por día móvil + tarjeta % cumplimiento + Generar ahora
+   Schema: PreventivoCalendarioViewModel (Eventos, Cumplimiento)
+   User instruction: "/Preventivos/Calendario vista mensual (tabla/grilla responsive, en movil como lista por dia) con enlace al ticket generado, boton Generar ahora (POST), tarjeta con % cumplimiento del plan. Responsive a 375px." *@
+@{
+    ViewData["Title"] = "Calendario preventivo";
+    var cultura = new System.Globalization.CultureInfo("es-HN");
+    var nombreMes = new DateTime(Model.Anio, Model.Mes, 1).ToString("MMMM yyyy", cultura);
+    var offset = ((int)Model.Desde.DayOfWeek + 6) % 7;
+    var diasMes = Model.Hasta.Day;
+    var porDia = Model.Eventos.GroupBy(e => e.FdFecha.Date).ToDictionary(g => g.Key, g => g.ToList());
+    var prevMes = Model.Mes == 1 ? 12 : Model.Mes - 1;
+    var prevAnio = Model.Mes == 1 ? Model.Anio - 1 : Model.Anio;
+    var nextMes = Model.Mes == 12 ? 1 : Model.Mes + 1;
+    var nextAnio = Model.Mes == 12 ? Model.Anio + 1 : Model.Anio;
+
+    var celdas = new List<(int? Dia, DateTime? Fecha)>();
+    for (var i = 0; i < offset; i++) celdas.Add((null, null));
+    for (var d = 1; d <= diasMes; d++)
+        celdas.Add((d, new DateTime(Model.Anio, Model.Mes, d)));
+    while (celdas.Count % 7 != 0) celdas.Add((null, null));
+    var semanas = celdas.Select((c, i) => new { c, i }).GroupBy(x => x.i / 7).Select(g => g.Select(x => x.c).ToList()).ToList();
+}
+@Html.AntiForgeryToken()
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0 text-capitalize">Calendario · @nombreMes</h1>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Index" style="min-height:40px">Planes</a>
+        <button type="button" class="btn btn-outline-primary" id="btnGenerar" style="min-height:40px">Generar ahora</button>
+    </div>
+</div>
+
+<div id="msgBox" class="d-none"></div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="p-3 border rounded-3 bg-light">
+            <div class="text-muted small">Cumplimiento del mes</div>
+            <div class="display-6 fw-semibold">@Model.Cumplimiento.FnPorcentajeCumplimiento.ToString("0.##")%</div>
+            <div class="small">@Model.Cumplimiento.FiEjecutados de @Model.Cumplimiento.FiProgramados ejecutados (VALIDADO/CERRADO)</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-8 d-flex flex-wrap align-items-end gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Calendario" asp-route-anio="@prevAnio" asp-route-mes="@prevMes" asp-route-sucursalId="@Model.SucursalId" style="min-height:40px">← Anterior</a>
+        <a class="btn btn-outline-secondary" asp-action="Calendario" asp-route-anio="@nextAnio" asp-route-mes="@nextMes" asp-route-sucursalId="@Model.SucursalId" style="min-height:40px">Siguiente →</a>
+        <form method="get" class="d-flex flex-wrap gap-2 flex-grow-1">
+            <input type="hidden" name="anio" value="@Model.Anio" />
+            <input type="hidden" name="mes" value="@Model.Mes" />
+            <select name="sucursalId" class="form-select" style="min-width:180px" onchange="this.form.submit()">
+                <option value="">Todas las sucursales</option>
+                @if (Model.Combos != null)
+                {
+                    foreach (var s in Model.Combos.Sucursales)
+                    {
+                        <option value="@s.FiId" selected="@(Model.SucursalId == s.FiId)">@s.FcNombre</option>
+                    }
+                }
+            </select>
+        </form>
+    </div>
+</div>
+
+<div class="d-none d-md-block table-responsive mb-4">
+    <table class="table table-bordered mb-0" style="table-layout:fixed">
+        <thead>
+            <tr class="text-center small">
+                <th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var semana in semanas)
+        {
+            <tr>
+            @foreach (var cel in semana)
+            {
+                if (cel.Dia == null)
+                {
+                    <td class="bg-light" style="height:110px;vertical-align:top"></td>
+                }
+                else
+                {
+                    @* Callers: PreventivosController.Calendario. Fix Razor: @foreach/@if en markup. Schema: eventos por día. *@
+                    porDia.TryGetValue(cel.Fecha!.Value, out var evsDia);
+                    <td style="height:110px;vertical-align:top;font-size:.8rem">
+                        <div class="fw-semibold mb-1">@cel.Dia</div>
+                        @if (evsDia != null)
+                        {
+                            @foreach (var e in evsDia.Take(4))
+                            {
+                                if (e.FiTicketId.HasValue)
+                                {
+                                    <div class="mb-1"><a asp-controller="Tickets" asp-action="Detalle" asp-route-id="@e.FiTicketId">@(e.FcTicketNumero ?? e.FcNombre)</a></div>
+                                }
+                                else
+                                {
+                                    <div class="text-muted mb-1">@e.FcNombre</div>
+                                }
+                            }
+                            @if (evsDia.Count > 4)
+                            {
+                                <div class="text-muted">+@(evsDia.Count - 4) más</div>
+                            }
+                        }
+                    </td>
+                }
+            }
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<div class="d-md-none">
+    @for (var d = 1; d <= diasMes; d++)
+    {
+        var fechaMovil = new DateTime(Model.Anio, Model.Mes, d);
+        var hayDia = porDia.TryGetValue(fechaMovil, out var evsMovil) && evsMovil != null && evsMovil.Count > 0;
+        if (hayDia)
+        {
+            <div class="border rounded-3 p-3 mb-2">
+                <div class="fw-semibold mb-2">@fechaMovil.ToString("dddd dd/MM", cultura)</div>
+                @foreach (var e in evsMovil!)
+                {
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <div>
+                            <div>@e.FcNombre</div>
+                            <div class="small text-muted">@(e.FcSucursalNombre) · @(e.FcActivoNombre ?? "Sin activo")</div>
+                        </div>
+                        @if (e.FiTicketId.HasValue)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Tickets" asp-action="Detalle" asp-route-id="@e.FiTicketId" style="min-height:40px">@e.FcTicketNumero</a>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">Proyectado</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+    @if (porDia.Count == 0)
+    {
+        <p class="text-muted">No hay mantenimientos programados en este mes.</p>
+    }
+</div>
+
+@if (Model.CumplimientoDetalle.Count > 0)
+{
+    <h2 class="h6 mt-4">Cumplimiento por plan</h2>
+    <div class="table-responsive">
+        <table class="table table-sm fara-tabla-movil">
+            <thead><tr><th>Plan</th><th>Sucursal</th><th>Programados</th><th>Ejecutados</th><th>%</th></tr></thead>
+            <tbody>
+            @foreach (var d in Model.CumplimientoDetalle)
+            {
+                <tr>
+                    <td data-label="Plan">@d.FcNombre</td>
+                    <td data-label="Sucursal">@d.FcSucursalNombre</td>
+                    <td data-label="Programados">@d.FiProgramados</td>
+                    <td data-label="Ejecutados">@d.FiEjecutados</td>
+                    <td data-label="%">@d.FnPorcentajeCumplimiento.ToString("0.##")%</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+<script>
+document.getElementById('btnGenerar').addEventListener('click', function () {
+    ajaxPost('/Preventivos/GenerarAhora', {}).then(function (resp) {
+        var box = document.getElementById('msgBox');
+        var ok = !!(resp.FbSucces || resp.fbSucces);
+        box.className = 'alert ' + (ok ? 'alert-success' : 'alert-danger');
+        box.textContent = resp.FcMensaje || resp.fcMensaje || 'Listo';
+        box.classList.remove('d-none');
+        if (ok) setTimeout(function () { location.reload(); }, 800);
+    });
+});
+</script>

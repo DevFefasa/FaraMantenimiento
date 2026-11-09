@@ -1,0 +1,43 @@
+@model IEnumerable<FM.OrigenDatos.Modelos.Seguridad.RolModelo>
+@{
+    ViewData["Title"] = "Roles y permisos";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0">Roles y permisos</h1>
+    <a class="btn btn-outline-secondary" asp-action="Index" style="min-height:40px">Usuarios</a>
+</div>
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">@TempData["Ok"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var r in Model)
+        {
+            <tr>
+                <td>@r.FcCodigo</td>
+                <td>@r.FcNombre</td>
+                <td>@r.FcDescripcion</td>
+                <td>@(r.FbActivo ? "Activo" : "Inactivo")</td>
+                <td>
+                    <a class="btn btn-sm btn-outline-primary" asp-action="RolPermisos" asp-route-id="@r.FiId" style="min-height:40px">Permisos</a>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

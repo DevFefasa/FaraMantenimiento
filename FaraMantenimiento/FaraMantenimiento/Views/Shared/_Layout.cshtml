@@ -1,0 +1,81 @@
+﻿<!DOCTYPE html>
+<html lang="es" dir="ltr" data-bs-theme="light" data-color-theme="Blue_Theme" data-layout="vertical" data-boxed-layout="full" data-card="shadow">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Fara Mant." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>@ViewData["Title"] - Fara Mantenimiento</title>
+    <link rel="manifest" href="~/manifest.webmanifest" />
+    <partial name="_Favicons" />
+    <link rel="stylesheet" href="~/assets/css/styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/assets/css/fara-identidad.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/assets/libs/sweetalert2/dist/sweetalert2.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/assets/libs/select2/dist/css/select2.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <link rel="stylesheet" href="~/assets/libs/datatables.net-bs5/css/dataTables.bootstrap5.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/dropzone-adjuntos.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <div id="main-wrapper">
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <partial name="_Sidebar" />
+        }
+
+        <div class="page-wrapper">
+            <div class="body-wrapper">
+                <div class="container-fluid">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <partial name="_Header" />
+                    }
+
+                    @if (ViewData["SinTarjeta"] is true)
+                    {
+                        @RenderBody()
+                    }
+                    else
+                    {
+                        <div class="card">
+                            <div class="card-body">
+                                @RenderBody()
+                            </div>
+                        </div>
+                    }
+
+                    <partial name="_Footer" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/assets/libs/jquery/dist/jquery.min.js" asp-append-version="true"></script>
+    <script src="~/assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
+    <script src="~/assets/libs/simplebar/dist/simplebar.min.js" asp-append-version="true"></script>
+    <script src="~/assets/js/theme/app.init.js" asp-append-version="true"></script>
+    <script src="~/assets/js/theme/theme.js" asp-append-version="true"></script>
+    <script src="~/assets/js/theme/app.min.js" asp-append-version="true"></script>
+    <script src="~/assets/js/theme/sidebarmenu.js" asp-append-version="true"></script>
+    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.min.js" asp-append-version="true"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js" asp-append-version="true"></script>
+    <script src="~/assets/libs/datatables.net/js/jquery.dataTables.min.js" asp-append-version="true"></script>
+    <script src="~/js/selects.js" asp-append-version="true"></script>
+    <script src="~/js/dropzone-adjuntos.js" asp-append-version="true"></script>
+    <script src="~/js/fara-tabla.js" asp-append-version="true"></script>
+    <script src="~/js/fara-comun.js" asp-append-version="true"></script>
+    <partial name="_Alertas" />
+    @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function () { /* ignore */ });
+            });
+        }
+    </script>
+</body>
+</html>

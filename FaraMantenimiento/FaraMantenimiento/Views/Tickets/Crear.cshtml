@@ -1,0 +1,111 @@
+@model FaraMantenimiento.ViewModels.Tickets.TicketCrearViewModel
+@{
+    ViewData["Title"] = "Nuevo ticket";
+    var combos = (FM.OrigenDatos.Modelos.Catalogos.CatalogoCombosModelo)ViewBag.Combos;
+    ViewData["InputName"] = "adjuntos";
+    ViewData["Label"] = "Fotos, videos o documentos";
+    ViewData["MaxMb"] = 25;
+}
+<h1 class="h4 mb-3">Nuevo ticket</h1>
+<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+<form asp-action="Crear" method="post" enctype="multipart/form-data" class="row g-3" id="formCrearTicket">
+    @Html.AntiForgeryToken()
+
+    <div class="col-12 col-md-6">
+        <label asp-for="FiSucursalId" class="form-label"></label>
+        <select asp-for="FiSucursalId" class="form-select" id="selSucursal" required data-placeholder="Seleccione sucursal">
+            <option value="">Seleccione...</option>
+            @foreach (var s in combos.Sucursales)
+            {
+                <option value="@s.FiId">@s.FcNombre</option>
+            }
+        </select>
+        <span asp-validation-for="FiSucursalId" class="text-danger small"></span>
+    </div>
+    <div class="col-12 col-md-6">
+        <label asp-for="FiUbicacionId" class="form-label"></label>
+        <select asp-for="FiUbicacionId" class="form-select" id="selUbicacion" data-placeholder="Opcional">
+            <option value="">(Opcional)</option>
+        </select>
+    </div>
+    <div class="col-12">
+        <label asp-for="FcUbicacionDetalle" class="form-label"></label>
+        <input asp-for="FcUbicacionDetalle" class="form-control" />
+    </div>
+    <div class="col-12 col-md-6">
+        <label asp-for="FiActivoId" class="form-label"></label>
+        <select asp-for="FiActivoId" class="form-select" id="selActivo">
+            <option value="">(Opcional)</option>
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label asp-for="FiTipoMantenimientoId" class="form-label"></label>
+        <select asp-for="FiTipoMantenimientoId" class="form-select" id="selTipo" required>
+            <option value="">Seleccione...</option>
+            @foreach (var t in combos.Tipos)
+            {
+                <option value="@t.FiId" data-fecha="@t.FbRequiereFechaSugerida.ToString().ToLowerInvariant()">@t.FcNombre</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label asp-for="FiCategoriaId" class="form-label"></label>
+        <select asp-for="FiCategoriaId" class="form-select" required>
+            <option value="">Seleccione...</option>
+            @foreach (var c in combos.Categorias)
+            {
+                <option value="@c.FiId">@c.FcNombre</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label asp-for="FiPrioridadId" class="form-label"></label>
+        <select asp-for="FiPrioridadId" class="form-select" required>
+            <option value="">Seleccione...</option>
+            @foreach (var p in combos.Prioridades)
+            {
+                <option value="@p.FiId">@p.FcNombre</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6" id="wrapFechaSugerida" style="display:none">
+        <label asp-for="FdFechaSugerida" class="form-label"></label>
+        <input asp-for="FdFechaSugerida" type="datetime-local" class="form-control" />
+    </div>
+    <div class="col-12">
+        <label asp-for="FcDescripcion" class="form-label"></label>
+        <textarea asp-for="FcDescripcion" class="form-control" rows="4" required></textarea>
+    </div>
+    <div class="col-12">
+        <partial name="_AdjuntosInput" />
+    </div>
+    <div class="col-12 d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary" style="min-height:40px">Crear ticket</button>
+        <a asp-action="Mios" class="btn btn-outline-secondary" style="min-height:40px">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+(function () {
+    var ubicaciones = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(combos.Ubicaciones.Select(u => new { u.FiId, u.FcNombre, u.FiSucursalId })));
+    var activos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(combos.Activos.Select(a => new { a.FiId, a.FcNombre, a.FiSucursalId })));
+    function fill(sel, items, placeholder) {
+        var $s = $(sel).empty().append($('<option/>').val('').text(placeholder || '(Opcional)'));
+        items.forEach(function (i) { $s.append($('<option/>').val(i.fiId).text(i.fcNombre)); });
+        $s.trigger('change');
+    }
+    $('#selSucursal').on('change', function () {
+        var id = parseInt(this.value || '0', 10);
+        fill('#selUbicacion', ubicaciones.filter(function (x) { return x.fiSucursalId === id; }));
+        fill('#selActivo', activos.filter(function (x) { return x.fiSucursalId === id; }));
+    }).trigger('change');
+    function syncFecha() {
+        var req = $('#selTipo option:selected').data('fecha') === true || $('#selTipo option:selected').data('fecha') === 'true';
+        $('#wrapFechaSugerida').toggle(!!req);
+    }
+    $('#selTipo').on('change', syncFecha); syncFecha();
+})();
+</script>
+}

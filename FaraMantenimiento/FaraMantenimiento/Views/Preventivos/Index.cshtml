@@ -1,0 +1,278 @@
+@model FaraMantenimiento.ViewModels.Preventivos.PreventivoListaViewModel
+@* Callers: PreventivosController.Index. API: lista planes + modal guardar/activar/generar. Responsive 375px.
+   User instruction: "/Preventivos lista de planes (crear/editar en modal con selects sucursal->ubicacion->activo)" *@
+@{
+    ViewData["Title"] = "Planes preventivos";
+    var combos = Model.Combos;
+}
+@Html.AntiForgeryToken()
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0">Planes preventivos</h1>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Calendario" style="min-height:40px">Calendario</a>
+        <button type="button" class="btn btn-outline-primary" id="btnGenerar" style="min-height:40px">Generar ahora</button>
+        <button type="button" class="btn btn-primary" id="btnNuevo" style="min-height:40px">Nuevo plan</button>
+    </div>
+</div>
+
+<div id="msgBox" class="d-none"></div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-12 col-md-4">
+        <select name="sucursalId" class="form-select" onchange="this.form.submit()">
+            <option value="">Todas las sucursales</option>
+            @if (combos != null)
+            {
+                foreach (var s in combos.Sucursales)
+                {
+                    <option value="@s.FiId" selected="@(Model.SucursalId == s.FiId)">@s.FcNombre</option>
+                }
+            }
+        </select>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle fara-tabla-movil">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Sucursal</th>
+                <th>Activo</th>
+                <th>Frecuencia</th>
+                <th>Próxima</th>
+                <th>Estado</th>
+                <th class="fara-col-accion">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (Model.Planes.Count == 0)
+        {
+            <tr><td colspan="7" class="text-muted">No hay planes registrados.</td></tr>
+        }
+        else
+        {
+            foreach (var p in Model.Planes)
+            {
+                <tr>
+                    <td data-label="Nombre">@p.FcNombre</td>
+                    <td data-label="Sucursal">@p.FcSucursalNombre</td>
+                    <td data-label="Activo">@(p.FcActivoNombre ?? "—")</td>
+                    <td data-label="Frecuencia">cada @p.FiFrecuenciaDias días</td>
+                    <td data-label="Próxima">@p.FdProximaFecha.ToString("dd/MM/yyyy")</td>
+                    <td data-label="Estado">
+                        @if (p.FbActivo)
+                        { <span class="badge text-bg-success">Activo</span> }
+                        else
+                        { <span class="badge text-bg-secondary">Inactivo</span> }
+                    </td>
+                    <td class="fara-col-accion" data-label="Acciones">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="@p.FiId" style="min-height:40px">Editar</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-activar" data-id="@p.FiId" data-activo="@(p.FbActivo ? "0" : "1")" style="min-height:40px">
+                            @(p.FbActivo ? "Desactivar" : "Activar")
+                        </button>
+                    </td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="modalPlan" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="modalPlanTitulo">Nuevo plan</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formPlan" class="row g-3">
+                    <input type="hidden" id="FiId" name="FiId" value="" />
+                    <div class="col-12">
+                        <label class="form-label" for="FcNombre">Nombre</label>
+                        <input class="form-control" id="FcNombre" name="FcNombre" required maxlength="150" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="FiSucursalId">Sucursal</label>
+                        <select class="form-select" id="FiSucursalId" name="FiSucursalId" required>
+                            <option value="">Seleccione...</option>
+                            @if (combos != null) { foreach (var s in combos.Sucursales) { <option value="@s.FiId">@s.FcNombre</option> } }
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="FiUbicacionId">Ubicación</label>
+                        <select class="form-select" id="FiUbicacionId" name="FiUbicacionId"><option value="">(Opcional)</option></select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="FiActivoId">Activo</label>
+                        <select class="form-select" id="FiActivoId" name="FiActivoId"><option value="">(Opcional)</option></select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="FiCategoriaId">Categoría</label>
+                        <select class="form-select" id="FiCategoriaId" name="FiCategoriaId" required>
+                            <option value="">Seleccione...</option>
+                            @if (combos != null) { foreach (var c in combos.Categorias) { <option value="@c.FiId">@c.FcNombre</option> } }
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="FiPrioridadId">Prioridad</label>
+                        <select class="form-select" id="FiPrioridadId" name="FiPrioridadId" required>
+                            <option value="">Seleccione...</option>
+                            @if (combos != null) { foreach (var p in combos.Prioridades) { <option value="@p.FiId">@p.FcNombre</option> } }
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="FiFrecuenciaDias">Frecuencia (días)</label>
+                        <input type="number" class="form-control" id="FiFrecuenciaDias" name="FiFrecuenciaDias" min="1" value="30" required />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label" for="FiDiasAnticipacion">Días anticipación</label>
+                        <input type="number" class="form-control" id="FiDiasAnticipacion" name="FiDiasAnticipacion" min="0" value="7" required />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="FdProximaFecha">Próxima fecha</label>
+                        <input type="date" class="form-control" id="FdProximaFecha" name="FdProximaFecha" required />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="FiTecnicoId">Técnico</label>
+                        <select class="form-select" id="FiTecnicoId" name="FiTecnicoId">
+                            <option value="">(Opcional)</option>
+                            @if (combos != null) { foreach (var t in combos.Tecnicos) { <option value="@t.FiId">@t.FcNombre</option> } }
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="FiProveedorId">Proveedor</label>
+                        <select class="form-select" id="FiProveedorId" name="FiProveedorId">
+                            <option value="">(Opcional)</option>
+                            @if (combos != null) { foreach (var pr in combos.Proveedores) { <option value="@pr.FiId">@pr.FcNombre</option> } }
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="FcDescripcion">Descripción</label>
+                        <textarea class="form-control" id="FcDescripcion" name="FcDescripcion" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="min-height:40px">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarPlan" style="min-height:40px">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const ubicaciones = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        (combos?.Ubicaciones ?? new List<FM.OrigenDatos.Modelos.Catalogos.CatalogoItemModelo>())
+            .Select(x => new { x.FiId, x.FcNombre, x.FiSucursalId })));
+    const activos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        (combos?.Activos ?? new List<FM.OrigenDatos.Modelos.Catalogos.CatalogoItemModelo>())
+            .Select(x => new { x.FiId, x.FcNombre, x.FiSucursalId, x.FiUbicacionId })));
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPlan'));
+
+    function showMsg(ok, text) {
+        const box = document.getElementById('msgBox');
+        box.className = 'alert ' + (ok ? 'alert-success' : 'alert-danger');
+        box.textContent = text;
+        box.classList.remove('d-none');
+    }
+
+    function filtrarDependientes() {
+        const suc = document.getElementById('FiSucursalId').value;
+        const ubiSel = document.getElementById('FiUbicacionId');
+        const actSel = document.getElementById('FiActivoId');
+        const ubiActual = ubiSel.value;
+        const actActual = actSel.value;
+        ubiSel.innerHTML = '<option value="">(Opcional)</option>';
+        ubicaciones.filter(u => !suc || String(u.FiSucursalId) === String(suc)).forEach(u => {
+            const o = document.createElement('option');
+            o.value = u.FiId; o.textContent = u.FcNombre;
+            if (String(u.FiId) === String(ubiActual)) o.selected = true;
+            ubiSel.appendChild(o);
+        });
+        const ubi = ubiSel.value;
+        actSel.innerHTML = '<option value="">(Opcional)</option>';
+        activos.filter(a => (!suc || String(a.FiSucursalId) === String(suc)) && (!ubi || !a.FiUbicacionId || String(a.FiUbicacionId) === String(ubi))).forEach(a => {
+            const o = document.createElement('option');
+            o.value = a.FiId; o.textContent = a.FcNombre;
+            if (String(a.FiId) === String(actActual)) o.selected = true;
+            actSel.appendChild(o);
+        });
+    }
+
+    function limpiarForm() {
+        document.getElementById('FiId').value = '';
+        document.getElementById('formPlan').reset();
+        document.getElementById('FiFrecuenciaDias').value = 30;
+        document.getElementById('FiDiasAnticipacion').value = 7;
+        const d = new Date(); d.setDate(d.getDate() + 7);
+        document.getElementById('FdProximaFecha').value = d.toISOString().slice(0, 10);
+        filtrarDependientes();
+    }
+
+    document.getElementById('FiSucursalId').addEventListener('change', filtrarDependientes);
+    document.getElementById('FiUbicacionId').addEventListener('change', filtrarDependientes);
+
+    document.getElementById('btnNuevo').addEventListener('click', () => {
+        document.getElementById('modalPlanTitulo').textContent = 'Nuevo plan';
+        limpiarForm();
+        modal.show();
+    });
+
+    document.querySelectorAll('.btn-editar').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            const data = await (await fetch('/Preventivos/Obtener?id=' + id)).json();
+            if (!(data.fbSucces || data.FbSucces)) { showMsg(false, data.fcMensaje || data.FcMensaje || 'Error'); return; }
+            const p = data.plan;
+            document.getElementById('modalPlanTitulo').textContent = 'Editar plan';
+            document.getElementById('FiId').value = p.fiId ?? p.FiId;
+            document.getElementById('FcNombre').value = p.fcNombre ?? p.FcNombre ?? '';
+            document.getElementById('FiSucursalId').value = p.fiSucursalId ?? p.FiSucursalId ?? '';
+            filtrarDependientes();
+            document.getElementById('FiUbicacionId').value = p.fiUbicacionId ?? p.FiUbicacionId ?? '';
+            filtrarDependientes();
+            document.getElementById('FiActivoId').value = p.fiActivoId ?? p.FiActivoId ?? '';
+            document.getElementById('FiCategoriaId').value = p.fiCategoriaId ?? p.FiCategoriaId ?? '';
+            document.getElementById('FiPrioridadId').value = p.fiPrioridadId ?? p.FiPrioridadId ?? '';
+            document.getElementById('FiFrecuenciaDias').value = p.fiFrecuenciaDias ?? p.FiFrecuenciaDias ?? 30;
+            document.getElementById('FiDiasAnticipacion').value = p.fiDiasAnticipacion ?? p.FiDiasAnticipacion ?? 7;
+            document.getElementById('FdProximaFecha').value = ((p.fdProximaFecha ?? p.FdProximaFecha) || '').toString().slice(0, 10);
+            document.getElementById('FiTecnicoId').value = p.fiTecnicoId ?? p.FiTecnicoId ?? '';
+            document.getElementById('FiProveedorId').value = p.fiProveedorId ?? p.FiProveedorId ?? '';
+            document.getElementById('FcDescripcion').value = p.fcDescripcion ?? p.FcDescripcion ?? '';
+            modal.show();
+        });
+    });
+
+    document.getElementById('btnGuardarPlan').addEventListener('click', () => {
+        const form = document.getElementById('formPlan');
+        if (!form.reportValidity()) return;
+        ajaxPost('/Preventivos/Guardar', Object.fromEntries(new FormData(form).entries())).then(resp => {
+            if (resp.FbSucces || resp.fbSucces) location.reload();
+            else showMsg(false, resp.FcMensaje || resp.fcMensaje || 'No se pudo guardar');
+        });
+    });
+
+    document.querySelectorAll('.btn-activar').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ajaxPost('/Preventivos/Activar', { id: btn.getAttribute('data-id'), activo: btn.getAttribute('data-activo') === '1' })
+                .then(resp => {
+                    if (resp.FbSucces || resp.fbSucces) location.reload();
+                    else showMsg(false, resp.FcMensaje || resp.fcMensaje || 'Error');
+                });
+        });
+    });
+
+    document.getElementById('btnGenerar').addEventListener('click', () => {
+        ajaxPost('/Preventivos/GenerarAhora', {}).then(resp => {
+            showMsg(!!(resp.FbSucces || resp.fbSucces), resp.FcMensaje || resp.fcMensaje || 'Listo');
+            if (resp.FbSucces || resp.fbSucces) setTimeout(() => location.reload(), 800);
+        });
+    });
+})();
+</script>

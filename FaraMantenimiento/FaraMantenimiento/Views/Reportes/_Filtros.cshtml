@@ -1,0 +1,114 @@
+﻿@using FM.OrigenDatos.Modelos.Catalogo
+@using FaraMantenimiento.Models
+@{
+    var filtro = (ReporteFiltroViewModel)ViewBag.Filtro;
+    var combos = (CatalogoCombosModelo)ViewBag.Combos;
+    var action = ViewBag.FiltroAction as string ?? "Index";
+    var controller = ViewBag.FiltroController as string ?? "Reportes";
+}
+<form method="get" asp-controller="@controller" asp-action="@action" class="row g-2 align-items-end mb-3 fara-form-row">
+    @if (!string.IsNullOrEmpty(filtro.Pestana))
+    {
+        <input type="hidden" name="Pestana" value="@filtro.Pestana" />
+    }
+    <div class="col-6 col-md-3 col-xl-2">
+        <label class="form-label">Desde</label>
+        <input type="date" name="FdDesde" class="form-control" value="@(filtro.FdDesde?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+        <label class="form-label">Hasta</label>
+        <input type="date" name="FdHasta" class="form-control" value="@(filtro.FdHasta?.ToString("yyyy-MM-dd"))" />
+    </div>
+    <div class="col-12 col-md-3 col-xl-2">
+        <label class="form-label">Región</label>
+        <select name="FiRegionId" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var r in combos.Regiones)
+            {
+                if (filtro.FiRegionId == r.FiId) { <option value="@r.FiId" selected>@r.FcNombre</option> }
+                else { <option value="@r.FiId">@r.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-3 col-xl-2">
+        <label class="form-label">Sucursal</label>
+        <select name="FiSucursalId" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var s in combos.Sucursales)
+            {
+                if (filtro.FiSucursalId == s.FiId) { <option value="@s.FiId" selected>@s.FcNombre</option> }
+                else { <option value="@s.FiId">@s.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+        <label class="form-label">Tipo</label>
+        <select name="FiTipoMantenimientoId" class="form-select">
+            <option value="">Todos</option>
+            @foreach (var t in combos.Tipos)
+            {
+                if (filtro.FiTipoMantenimientoId == t.FiId) { <option value="@t.FiId" selected>@t.FcNombre</option> }
+                else { <option value="@t.FiId">@t.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+        <label class="form-label">Categoría</label>
+        <select name="FiCategoriaId" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var c in combos.Categorias)
+            {
+                if (filtro.FiCategoriaId == c.FiId) { <option value="@c.FiId" selected>@c.FcNombre</option> }
+                else { <option value="@c.FiId">@c.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+        <label class="form-label">Prioridad</label>
+        <select name="FiPrioridadId" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var p in combos.Prioridades)
+            {
+                if (filtro.FiPrioridadId == p.FiId) { <option value="@p.FiId" selected>@p.FcNombre</option> }
+                else { <option value="@p.FiId">@p.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+        <label class="form-label">Estado</label>
+        <select name="FiEstadoId" class="form-select">
+            <option value="">Todos</option>
+            @foreach (var e in combos.Estados)
+            {
+                if (filtro.FiEstadoId == e.FiId) { <option value="@e.FiId" selected>@e.FcNombre</option> }
+                else { <option value="@e.FiId">@e.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+        <label class="form-label">Técnico</label>
+        <select name="FiTecnicoId" class="form-select">
+            <option value="">Todos</option>
+            @foreach (var t in combos.Tecnicos)
+            {
+                if (filtro.FiTecnicoId == t.FiId) { <option value="@t.FiId" selected>@t.FcNombre</option> }
+                else { <option value="@t.FiId">@t.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+        <label class="form-label">Proveedor</label>
+        <select name="FiProveedorId" class="form-select">
+            <option value="">Todos</option>
+            @foreach (var p in combos.Proveedores)
+            {
+                if (filtro.FiProveedorId == p.FiId) { <option value="@p.FiId" selected>@p.FcNombre</option> }
+                else { <option value="@p.FiId">@p.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-3 col-xl-2">
+        <button type="submit" class="btn btn-primary w-100">Aplicar filtros</button>
+    </div>
+</form>
+

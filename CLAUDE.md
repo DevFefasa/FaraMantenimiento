@@ -17,6 +17,8 @@ diseño (`Views/Shared/_Layout`, `_Sidebar`, `wwwroot/js/selects.js`, `dropzone-
 Al copiar, quitar todo lo de SAP/maquinaria que no aplique.
 
 ## Reglas
+- **Leer docs/CONVENCIONES.md antes de programar**: solución en 3 capas (Web → FM.Programacion → FM.OrigenDatos),
+  campos fc/fi/fd/fb/fn/fj, todo por procedimientos almacenados con respuesta estándar fiCodigo/fcMensaje/fbSucces/fjData.
 - Textos de UI en español.
 - Cada cambio de BD va en un script nuevo en db/migrations/NN_nombre.sql, idempotente.
 - Datos de negocio (estados, prioridades, SLA, tipos, categorías) en tablas, no en el código; solo los códigos de estado del flujo son constantes.

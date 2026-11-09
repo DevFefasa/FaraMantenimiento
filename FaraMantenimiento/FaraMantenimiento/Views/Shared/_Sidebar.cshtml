@@ -1,0 +1,179 @@
+@*
+  Callers: Views/Shared/_Layout.cshtml (<partial name="_Sidebar" />).
+  No existe _Sidebar (Glob Shared sin él).
+  Claims permiso: DASHBOARD, TICKET_*, PREVENTIVOS, CATALOGOS, REPORTES, SEGURIDAD.
+  Instrucción Etapa 4: sección PLANIFICACION con Plan preventivo y Calendario (permiso PREVENTIVOS).
+*@
+@{
+    bool Tiene(string pantalla) => User.HasClaim("permiso", pantalla);
+}
+<aside class="left-sidebar with-vertical">
+    <div class="brand-logo d-flex align-items-center justify-content-between">
+        <a asp-controller="Home" asp-action="Index" class="text-nowrap logo-img d-flex align-items-center gap-2">
+            <img src="~/assets/images/FefasaLogo.png" alt="FEFASA" class="fara-logo-full dark-logo" asp-append-version="true" />
+            <img src="~/assets/images/fara-icono.png" alt="FEFASA" class="fara-logo-icon" asp-append-version="true" />
+        </a>
+        <a href="javascript:void(0)" class="sidebartoggler ms-auto text-decoration-none fs-5 d-block d-xl-none"
+           aria-label="Cerrar menú">
+            <i class="ti ti-x"></i>
+        </a>
+    </div>
+    <div class="scroll-sidebar" data-simplebar>
+        <nav class="sidebar-nav">
+            <ul id="sidebarnav" class="mb-0">
+                <li class="nav-small-cap">
+                    <i class="ti ti-dots nav-small-cap-icon fs-5"></i>
+                    <span class="hide-menu">Inicio</span>
+                </li>
+
+                @if (Tiene("DASHBOARD"))
+                {
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Dashboard" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-layout-dashboard fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Dashboard</span>
+                        </a>
+                    </li>
+                }
+
+                <li class="nav-small-cap">
+                    <i class="ti ti-dots nav-small-cap-icon fs-5"></i>
+                    <span class="hide-menu">Tickets</span>
+                </li>
+
+                @if (Tiene("TICKET_CREAR"))
+                {
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Tickets/Crear" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-plus fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Nuevo ticket</span>
+                        </a>
+                    </li>
+                }
+                @if (Tiene("TICKET_MIOS"))
+                {
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Tickets/Mios" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-clipboard-list fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Mis tickets</span>
+                        </a>
+                    </li>
+                }
+                @if (Tiene("TICKET_BANDEJA"))
+                {
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Tickets/Bandeja" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-inbox fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Bandeja mantenimiento</span>
+                        </a>
+                    </li>
+                }
+                @if (Tiene("TICKET_APROBACION"))
+                {
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Tickets/Aprobacion" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-checkbox fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Aprobaciones</span>
+                        </a>
+                    </li>
+                }
+                @if (Tiene("TICKET_TODOS"))
+                {
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Tickets" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-list-details fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Todos los tickets</span>
+                        </a>
+                    </li>
+                }
+
+                @if (Tiene("PREVENTIVOS"))
+                {
+                    <li class="nav-small-cap">
+                        <i class="ti ti-dots nav-small-cap-icon fs-5"></i>
+                        <span class="hide-menu">Planificación</span>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Preventivos" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-calendar-event fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Plan preventivo</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Preventivos/Calendario" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-calendar fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Calendario</span>
+                        </a>
+                    </li>
+                }
+
+                @if (Tiene("CATALOGOS") || Tiene("REPORTES") || Tiene("SEGURIDAD"))
+                {
+                    <li class="nav-small-cap">
+                        <i class="ti ti-dots nav-small-cap-icon fs-5"></i>
+                        <span class="hide-menu">Administración</span>
+                    </li>
+                }
+
+                @if (Tiene("CATALOGOS"))
+                {
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Catalogos" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-books fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Catálogos</span>
+                        </a>
+                    </li>
+                }
+                @if (Tiene("REPORTES"))
+                {
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Reportes" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-chart-bar fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Reportes</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Reportes/HojaVida" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-id fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Hoja de vida</span>
+                        </a>
+                    </li>
+                }
+                @if (Tiene("SEGURIDAD"))
+                {
+                    <li class="sidebar-item">
+                        <a class="sidebar-link primary-hover-bg" href="/Seguridad" aria-expanded="false">
+                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
+                                <i class="ti ti-shield-lock fs-6"></i>
+                            </span>
+                            <span class="hide-menu ps-1">Seguridad</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    </div>
+</aside>
+<div class="dark-transparent sidebartoggler"></div>

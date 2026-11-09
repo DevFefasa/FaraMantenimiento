@@ -1,0 +1,146 @@
+@*
+  Callers: ReportesController.HojaVida. Combos: CatalogoCombosModelo.Activos.
+  Schema: ActivoHojaVidaModelo + Tickets + Totales (sp_reporte_activo_hojavida).
+  Instrucción: «Pantalla /Reportes/HojaVida/{id} … buscador de activo (select con busqueda) + boton exportar PDF».
+*@
+@using FM.OrigenDatos.Modelos.Catalogo
+@using FM.OrigenDatos.Modelos.Reportes
+@using FM.Programacion.Servicios
+@{
+    ViewData["Title"] = "Hoja de vida del activo";
+    ViewData["SinTarjeta"] = true;
+    var activos = ViewBag.Activos as List<CatalogoItemModelo> ?? new();
+    var activoId = ViewBag.ActivoId as int?;
+    var activo = ViewBag.Activo as ActivoHojaVidaModelo;
+    var tickets = ViewBag.Tickets as List<ActivoHojaVidaTicketModelo> ?? new();
+    var totales = ViewBag.Totales as ActivoHojaVidaTotalesModelo;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-0">Hoja de vida del activo</h1>
+        <p class="text-muted mb-0">Historial, costos y MTBF por equipo</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Index" asp-route-Pestana="mtbf">Volver a reportes</a>
+        @if (activoId is > 0 && activo != null)
+        {
+            <a class="btn btn-outline-danger" asp-action="ExportarHojaVidaPdf" asp-route-id="@activoId">
+                <i class="ti ti-file-type-pdf"></i> Exportar PDF
+            </a>
+        }
+    </div>
+</div>
+
+<form method="get" asp-action="HojaVida" class="card mb-3">
+    <div class="card-body row g-3 align-items-end">
+        <div class="col-md-8">
+            <label class="form-label" for="activoSelect">Activo</label>
+            <select id="activoSelect" name="id" class="form-select" data-placeholder="Buscar activo...">
+                <option value="">Seleccione un activo</option>
+                @foreach (var a in activos)
+                {
+                    if (activoId == a.FiId)
+                    {
+                        <option value="@a.FiId" selected="selected">@(string.IsNullOrEmpty(a.FcCodigo) ? a.FcNombre : a.FcCodigo + " — " + a.FcNombre)</option>
+                    }
+                    else
+                    {
+                        <option value="@a.FiId">@(string.IsNullOrEmpty(a.FcCodigo) ? a.FcNombre : a.FcCodigo + " — " + a.FcNombre)</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-primary w-100">Consultar</button>
+        </div>
+    </div>
+</form>
+
+@if (activo == null)
+{
+    <div class="alert alert-light border">Seleccione un activo para ver su hoja de vida.</div>
+}
+else
+{
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h6 text-primary">Datos del activo</h2>
+                    <dl class="row mb-0 small">
+                        <dt class="col-sm-4">Código</dt><dd class="col-sm-8">@activo.FcCodigo</dd>
+                        <dt class="col-sm-4">Nombre</dt><dd class="col-sm-8">@activo.FcNombre</dd>
+                        <dt class="col-sm-4">Sucursal</dt><dd class="col-sm-8">@activo.FcSucursalNombre</dd>
+                        <dt class="col-sm-4">Ubicación</dt><dd class="col-sm-8">@(activo.FcUbicacionNombre ?? "-")</dd>
+                        <dt class="col-sm-4">Categoría</dt><dd class="col-sm-8">@(activo.FcCategoriaNombre ?? "-")</dd>
+                        <dt class="col-sm-4">Marca</dt><dd class="col-sm-8">@(activo.FcMarca ?? "-")</dd>
+                        <dt class="col-sm-4">Modelo</dt><dd class="col-sm-8">@(activo.FcModelo ?? "-")</dd>
+                        <dt class="col-sm-4">Serie</dt><dd class="col-sm-8">@(activo.FcSerie ?? "-")</dd>
+                        <dt class="col-sm-4">Instalación</dt><dd class="col-sm-8">@ExportacionServicio.FormatoFecha(activo.FdFechaInstalacion)</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h6 text-primary">Totales</h2>
+                    @if (totales == null)
+                    {
+                        <p class="mb-0 text-muted">Sin datos.</p>
+                    }
+                    else
+                    {
+                        <div class="row g-2 small">
+                            <div class="col-6">Tickets: <strong>@totales.FiTickets</strong></div>
+                            <div class="col-6">Correctivos: <strong>@totales.FiCorrectivos</strong></div>
+                            <div class="col-6">Preventivos: <strong>@totales.FiPreventivos</strong></div>
+                            <div class="col-6">Reincidencias: <strong>@totales.FiReincidencias</strong></div>
+                            <div class="col-6">Mano de obra: <strong>@ExportacionServicio.FormatoMoneda(totales.FnCostoManoObra)</strong></div>
+                            <div class="col-6">Materiales: <strong>@ExportacionServicio.FormatoMoneda(totales.FnCostoMateriales)</strong></div>
+                            <div class="col-6">Proveedor: <strong>@ExportacionServicio.FormatoMoneda(totales.FnCostoProveedor)</strong></div>
+                            <div class="col-6">Costo total: <strong>@ExportacionServicio.FormatoMoneda(totales.FnCostoTotal)</strong></div>
+                            <div class="col-6">MTBF: <strong>@(totales.FnMtbfDias?.ToString("0.##") ?? "-") días</strong></div>
+                            <div class="col-6">Última intervención: <strong>@ExportacionServicio.FormatoFecha(totales.FdUltimaIntervencion)</strong></div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h2 class="h6">Historial de tickets</h2>
+            <div class="table-responsive">
+                <table class="table table-sm fara-tabla-movil" data-fara-tabla>
+                    <thead class="custom-header">
+                        <tr>
+                            <th>Número</th><th>Fecha</th><th>Tipo</th><th>Categoría</th>
+                            <th>Estado</th><th>Diagnóstico</th><th>Causa raíz</th><th>Costo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var t in tickets)
+                    {
+                        <tr>
+                            <td data-label="Número">@t.FcNumero</td>
+                            <td data-label="Fecha">@ExportacionServicio.FormatoFecha(t.FdFechaIngreso)</td>
+                            <td data-label="Tipo">@t.FcTipoNombre</td>
+                            <td data-label="Categoría">@t.FcCategoriaNombre</td>
+                            <td data-label="Estado">@t.FcEstadoNombre</td>
+                            <td data-label="Diagnóstico">@(t.FcDiagnostico ?? "-")</td>
+                            <td data-label="Causa raíz">@(t.FcCausaRaiz ?? "-")</td>
+                            <td data-label="Costo">@ExportacionServicio.FormatoMoneda(t.FnCostoTotal)</td>
+                        </tr>
+                    }
+                    @if (tickets.Count == 0)
+                    {
+                        <tr><td colspan="8" class="text-muted">Sin tickets para este activo.</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

@@ -1,0 +1,321 @@
+﻿@using FM.OrigenDatos.Modelos.Reportes
+@using FM.Programacion.Servicios
+@using FaraMantenimiento.Models
+@{
+    ViewData["Title"] = "Reportes";
+    ViewData["SinTarjeta"] = true;
+    var filtro = (ReporteFiltroViewModel)ViewBag.Filtro;
+    var pestana = (string)(ViewBag.Pestana ?? "resumen");
+    string Tab(string id) => pestana == id ? "nav-link active" : "nav-link";
+    string Q(string id)
+    {
+        var qs = new List<string> { "Pestana=" + id };
+        if (filtro.FdDesde.HasValue) qs.Add("FdDesde=" + filtro.FdDesde.Value.ToString("yyyy-MM-dd"));
+        if (filtro.FdHasta.HasValue) qs.Add("FdHasta=" + filtro.FdHasta.Value.ToString("yyyy-MM-dd"));
+        if (filtro.FiRegionId.HasValue) qs.Add("FiRegionId=" + filtro.FiRegionId);
+        if (filtro.FiSucursalId.HasValue) qs.Add("FiSucursalId=" + filtro.FiSucursalId);
+        if (filtro.FiTipoMantenimientoId.HasValue) qs.Add("FiTipoMantenimientoId=" + filtro.FiTipoMantenimientoId);
+        if (filtro.FiCategoriaId.HasValue) qs.Add("FiCategoriaId=" + filtro.FiCategoriaId);
+        if (filtro.FiPrioridadId.HasValue) qs.Add("FiPrioridadId=" + filtro.FiPrioridadId);
+        if (filtro.FiEstadoId.HasValue) qs.Add("FiEstadoId=" + filtro.FiEstadoId);
+        if (filtro.FiTecnicoId.HasValue) qs.Add("FiTecnicoId=" + filtro.FiTecnicoId);
+        if (filtro.FiProveedorId.HasValue) qs.Add("FiProveedorId=" + filtro.FiProveedorId);
+        return "?" + string.Join("&", qs);
+    }
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-0">Reportes</h1>
+        <p class="text-muted mb-0">Indicadores de mantenimiento</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-primary" asp-action="ExportarExcel" asp-route-indicador="@pestana"
+           asp-route-FdDesde="@filtro.FdDesde?.ToString("yyyy-MM-dd")" asp-route-FdHasta="@filtro.FdHasta?.ToString("yyyy-MM-dd")"
+           asp-route-FiRegionId="@filtro.FiRegionId" asp-route-FiSucursalId="@filtro.FiSucursalId"
+           asp-route-FiTipoMantenimientoId="@filtro.FiTipoMantenimientoId" asp-route-FiCategoriaId="@filtro.FiCategoriaId"
+           asp-route-FiPrioridadId="@filtro.FiPrioridadId" asp-route-FiEstadoId="@filtro.FiEstadoId"
+           asp-route-FiTecnicoId="@filtro.FiTecnicoId" asp-route-FiProveedorId="@filtro.FiProveedorId">
+            <i class="ti ti-file-spreadsheet"></i> Excel
+        </a>
+        <a class="btn btn-outline-danger" asp-action="ExportarPdf" asp-route-indicador="@pestana"
+           asp-route-FdDesde="@filtro.FdDesde?.ToString("yyyy-MM-dd")" asp-route-FdHasta="@filtro.FdHasta?.ToString("yyyy-MM-dd")"
+           asp-route-FiRegionId="@filtro.FiRegionId" asp-route-FiSucursalId="@filtro.FiSucursalId"
+           asp-route-FiTipoMantenimientoId="@filtro.FiTipoMantenimientoId" asp-route-FiCategoriaId="@filtro.FiCategoriaId"
+           asp-route-FiPrioridadId="@filtro.FiPrioridadId" asp-route-FiEstadoId="@filtro.FiEstadoId"
+           asp-route-FiTecnicoId="@filtro.FiTecnicoId" asp-route-FiProveedorId="@filtro.FiProveedorId">
+            <i class="ti ti-file-type-pdf"></i> PDF
+        </a>
+    </div>
+</div>
+
+<partial name="_Filtros" />
+
+<ul class="nav nav-pills flex-nowrap overflow-auto mb-3 gap-1 pb-1">
+    <li class="nav-item"><a class="@Tab("resumen")" href="@Q("resumen")">Resumen</a></li>
+    <li class="nav-item"><a class="@Tab("tiempos")" href="@Q("tiempos")">Tiempos</a></li>
+    <li class="nav-item"><a class="@Tab("sla")" href="@Q("sla")">SLA</a></li>
+    <li class="nav-item"><a class="@Tab("tipo")" href="@Q("tipo")">Tipo</a></li>
+    <li class="nav-item"><a class="@Tab("mtbf")" href="@Q("mtbf")">MTBF</a></li>
+    <li class="nav-item"><a class="@Tab("reincidencia")" href="@Q("reincidencia")">Reincidencia</a></li>
+    <li class="nav-item"><a class="@Tab("costos")" href="@Q("costos")">Costos</a></li>
+    <li class="nav-item"><a class="@Tab("productividad")" href="@Q("productividad")">Productividad</a></li>
+    <li class="nav-item"><a class="@Tab("satisfaccion")" href="@Q("satisfaccion")">Satisfacción</a></li>
+    <li class="nav-item"><a class="@Tab("tendencia")" href="@Q("tendencia")">Tendencia</a></li>
+</ul>
+
+<div class="card"><div class="card-body">
+@if (pestana == "resumen")
+{
+    var r = ViewBag.Resumen as ReporteResumenModelo ?? new ReporteResumenModelo();
+    <div class="table-responsive">
+    <table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Indicador</th><th>Valor</th></tr></thead>
+        <tbody>
+            <tr><td data-label="Indicador">Recibidos</td><td data-label="Valor">@r.FiRecibidos</td></tr>
+            <tr><td data-label="Indicador">Abiertos / backlog</td><td data-label="Valor">@r.FiBacklog</td></tr>
+            <tr><td data-label="Indicador">Cerrados</td><td data-label="Valor">@r.FiCerrados</td></tr>
+            <tr><td data-label="Indicador">Reincidentes</td><td data-label="Valor">@r.FiReincidentes</td></tr>
+            <tr><td data-label="Indicador">Respuesta prom. (h)</td><td data-label="Valor">@(r.FnHorasRespuestaPromedio?.ToString("0.##") ?? "-")</td></tr>
+            <tr><td data-label="Indicador">Solución / MTTR (h)</td><td data-label="Valor">@(r.FnHorasSolucionPromedio?.ToString("0.##") ?? "-")</td></tr>
+            <tr><td data-label="Indicador">% SLA solución</td><td data-label="Valor">@(r.FnPctSlaSolucion?.ToString("0.##") ?? "-")%</td></tr>
+            <tr><td data-label="Indicador">Satisfacción</td><td data-label="Valor">@(r.FnSatisfaccionPromedio?.ToString("0.##") ?? "-")</td></tr>
+        </tbody>
+    </table>
+    </div>
+}
+else if (pestana == "tiempos")
+{
+    var d = ViewBag.Tiempos as List<ReporteTiempoModelo> ?? new();
+    <div class="table-responsive"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Prioridad</th><th>Tickets</th><th>Resp. (h)</th><th>Solución (h)</th><th>MTTR (h)</th></tr></thead>
+        <tbody>
+        @foreach (var x in d) {
+            <tr>
+                <td data-label="Prioridad">@x.FcPrioridadNombre</td>
+                <td data-label="Tickets">@x.FiTickets</td>
+                <td data-label="Resp. (h)">@(x.FnHorasRespuestaPromedio?.ToString("0.##") ?? "-")</td>
+                <td data-label="Solución (h)">@(x.FnHorasSolucionPromedio?.ToString("0.##") ?? "-")</td>
+                <td data-label="MTTR (h)">@(x.FnMttrHoras?.ToString("0.##") ?? "-")</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+}
+else if (pestana == "sla")
+{
+    var d = ViewBag.Sla as List<ReporteSlaModelo> ?? new();
+    <div class="table-responsive"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Prioridad</th><th>Tickets</th><th>% Resp.</th><th>% Solución</th></tr></thead>
+        <tbody>
+        @foreach (var x in d) {
+            <tr>
+                <td data-label="Prioridad">@x.FcPrioridadNombre</td>
+                <td data-label="Tickets">@x.FiTickets</td>
+                <td data-label="% Resp.">@(x.FnPctSlaRespuesta?.ToString("0.##") ?? "-")%</td>
+                <td data-label="% Solución">@(x.FnPctSlaSolucion?.ToString("0.##") ?? "-")%</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+}
+else if (pestana == "tipo")
+{
+    var d = ViewBag.Tipos as List<ReporteTipoModelo> ?? new();
+    <div class="table-responsive"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Tipo</th><th>Preventivo</th><th>Tickets</th><th>%</th></tr></thead>
+        <tbody>
+        @foreach (var x in d) {
+            <tr>
+                <td data-label="Tipo">@x.FcTipoNombre</td>
+                <td data-label="Preventivo">@(x.FbEsPreventivo ? "Sí" : "No")</td>
+                <td data-label="Tickets">@x.FiTickets</td>
+                <td data-label="%">@(x.FnPorcentaje?.ToString("0.##") ?? "-")%</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+}
+else if (pestana == "mtbf")
+{
+    var a = ViewBag.MtbfActivo as List<ReporteMtbfModelo> ?? new();
+    var s = ViewBag.MtbfSucursal as List<ReporteMtbfModelo> ?? new();
+    @* Callers: pestana mtbf. Schema: ReporteMtbfModelo.FiActivoId. Instrucción: «enlace a la hoja de vida». *@
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 mb-0">Por activo</h2>
+        <a class="btn btn-sm btn-outline-primary" asp-action="HojaVida">Hoja de vida</a>
+    </div>
+    <div class="table-responsive mb-4"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Activo</th><th>Sucursal</th><th>Fallos</th><th>MTBF (h)</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var x in a) {
+            <tr>
+                <td data-label="Activo">@x.FcNombre</td>
+                <td data-label="Sucursal">@x.FcSucursalNombre</td>
+                <td data-label="Fallos">@x.FiFallos</td>
+                <td data-label="MTBF (h)">@(x.FnMtbfHoras?.ToString("0.##") ?? "-")</td>
+                <td data-label="">
+                    @if (x.FiActivoId is > 0)
+                    {
+                        <a asp-action="HojaVida" asp-route-id="@x.FiActivoId">Hoja de vida</a>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+    <h2 class="h6">Por sucursal</h2>
+    <div class="table-responsive"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Sucursal</th><th>Fallos</th><th>MTBF (h)</th></tr></thead>
+        <tbody>
+        @foreach (var x in s) {
+            <tr>
+                <td data-label="Sucursal">@x.FcNombre</td>
+                <td data-label="Fallos">@x.FiFallos</td>
+                <td data-label="MTBF (h)">@(x.FnMtbfHoras?.ToString("0.##") ?? "-")</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+}
+else if (pestana == "reincidencia")
+{
+    var rr = ViewBag.ReincidenciaResumen as ReporteReincidenciaResumenModelo ?? new();
+    var dd = ViewBag.ReincidenciaDetalle as List<ReporteReincidenciaDetalleModelo> ?? new();
+    <p class="mb-3">Tasa de reincidencia: <strong>@(rr.FnTasaReincidencia?.ToString("0.##") ?? "0")%</strong>
+        (@rr.FiReincidentes de @rr.FiTickets)</p>
+    <div class="table-responsive"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Activo</th><th>Categoría</th><th>Sucursal</th><th>Reincidentes</th></tr></thead>
+        <tbody>
+        @foreach (var x in dd) {
+            <tr>
+                <td data-label="Activo">@x.FcActivoNombre</td>
+                <td data-label="Categoría">@x.FcCategoriaNombre</td>
+                <td data-label="Sucursal">@x.FcSucursalNombre</td>
+                <td data-label="Reincidentes">@x.FiReincidentes</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+}
+else if (pestana == "costos")
+{
+    var cs = ViewBag.CostosSucursal as List<ReporteCostoModelo> ?? new();
+    var cc = ViewBag.CostosCategoria as List<ReporteCostoModelo> ?? new();
+    var ca = ViewBag.CostosActivo as List<ReporteCostoModelo> ?? new();
+    var bloques = new[] {
+        new { Titulo = "Por sucursal", Rows = cs, EsActivo = false },
+        new { Titulo = "Por categoría", Rows = cc, EsActivo = false },
+        new { Titulo = "Por activo", Rows = ca, EsActivo = true }
+    };
+    foreach (var b in bloques)
+    {
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h6 mb-0">@b.Titulo</h2>
+            @if (b.EsActivo)
+            {
+                <a class="btn btn-sm btn-outline-primary" asp-action="HojaVida">Hoja de vida</a>
+            }
+        </div>
+        <div class="table-responsive mb-4"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+            <thead class="custom-header">
+                <tr>
+                    <th>Nombre</th><th>Tickets</th><th>Mano obra</th><th>Materiales</th><th>Proveedor</th><th>Total</th>
+                    @if (b.EsActivo) { <th></th> }
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var x in b.Rows) {
+                <tr>
+                    <td data-label="Nombre">@x.FcNombre</td>
+                    <td data-label="Tickets">@x.FiTickets</td>
+                    <td data-label="Mano obra">@ExportacionServicio.FormatoMoneda(x.FnCostoManoObra)</td>
+                    <td data-label="Materiales">@ExportacionServicio.FormatoMoneda(x.FnCostoMateriales)</td>
+                    <td data-label="Proveedor">@ExportacionServicio.FormatoMoneda(x.FnCostoProveedor)</td>
+                    <td data-label="Total">@ExportacionServicio.FormatoMoneda(x.FnCostoTotal)</td>
+                    @if (b.EsActivo)
+                    {
+                        <td data-label="">
+                            @if (x.FiActivoId is > 0)
+                            {
+                                <a asp-action="HojaVida" asp-route-id="@x.FiActivoId">Hoja de vida</a>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table></div>
+    }
+}
+else if (pestana == "productividad")
+{
+    var te = ViewBag.ProductividadTecnicos as List<ReporteProductividadModelo> ?? new();
+    var pr = ViewBag.ProductividadProveedores as List<ReporteProductividadModelo> ?? new();
+    <h2 class="h6">Técnicos</h2>
+    <div class="table-responsive mb-4"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Técnico</th><th>Tickets</th><th>Horas</th><th>Solución prom. (h)</th></tr></thead>
+        <tbody>
+        @foreach (var x in te) {
+            <tr>
+                <td data-label="Técnico">@x.FcNombre</td>
+                <td data-label="Tickets">@x.FiTickets</td>
+                <td data-label="Horas">@x.FnHorasTrabajadas.ToString("0.##")</td>
+                <td data-label="Solución prom. (h)">@(x.FnHorasSolucionPromedio?.ToString("0.##") ?? "-")</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+    <h2 class="h6">Proveedores</h2>
+    <div class="table-responsive"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Proveedor</th><th>Tickets</th><th>Horas</th><th>Solución prom. (h)</th></tr></thead>
+        <tbody>
+        @foreach (var x in pr) {
+            <tr>
+                <td data-label="Proveedor">@x.FcNombre</td>
+                <td data-label="Tickets">@x.FiTickets</td>
+                <td data-label="Horas">@x.FnHorasTrabajadas.ToString("0.##")</td>
+                <td data-label="Solución prom. (h)">@(x.FnHorasSolucionPromedio?.ToString("0.##") ?? "-")</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+}
+else if (pestana == "satisfaccion")
+{
+    var sr = ViewBag.SatisfaccionResumen as ReporteSatisfaccionResumenModelo ?? new();
+    var sd = ViewBag.SatisfaccionDetalle as List<ReporteSatisfaccionDetalleModelo> ?? new();
+    <p class="mb-3">Promedio: <strong>@(sr.FnCalificacionPromedio?.ToString("0.##") ?? "-")</strong> ·
+        Conformes: <strong>@(sr.FnPctConformes?.ToString("0.##") ?? "0")%</strong> (@sr.FiConformes / @sr.FiEncuestas)</p>
+    <div class="table-responsive"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Calificación</th><th>Cantidad</th><th>%</th></tr></thead>
+        <tbody>
+        @foreach (var x in sd) {
+            <tr>
+                <td data-label="Calificación">@x.FiCalificacion</td>
+                <td data-label="Cantidad">@x.FiCantidad</td>
+                <td data-label="%">@(x.FnPorcentaje?.ToString("0.##") ?? "-")%</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+}
+else if (pestana == "tendencia")
+{
+    var d = ViewBag.Tendencia as List<ReporteTendenciaModelo> ?? new();
+    <div class="table-responsive"><table class="table table-sm fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header"><tr><th>Periodo</th><th>Recibidos</th><th>Cerrados</th><th>Abiertos</th><th>MTTR (h)</th></tr></thead>
+        <tbody>
+        @foreach (var x in d) {
+            <tr>
+                <td data-label="Periodo">@x.FcPeriodoEtiqueta</td>
+                <td data-label="Recibidos">@x.FiRecibidos</td>
+                <td data-label="Cerrados">@x.FiCerrados</td>
+                <td data-label="Abiertos">@x.FiAbiertos</td>
+                <td data-label="MTTR (h)">@(x.FnMttrHoras?.ToString("0.##") ?? "-")</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+}
+</div></div>
+

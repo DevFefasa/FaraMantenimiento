@@ -1,0 +1,70 @@
+@model IEnumerable<FM.OrigenDatos.Modelos.Seguridad.UsuarioModelo>
+@{
+    ViewData["Title"] = "Usuarios";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0">Usuarios</h1>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Roles" style="min-height:40px">Roles y permisos</a>
+        <a class="btn btn-primary" asp-action="Usuario" style="min-height:40px">Nuevo usuario</a>
+    </div>
+</div>
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">@TempData["Ok"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="table-responsive d-none d-md-block">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Rol</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var u in Model)
+        {
+            <tr>
+                <td>@u.FcUsuario</td>
+                <td>@u.FcNombre</td>
+                <td>@u.FcRolNombre</td>
+                <td>@(u.FbEsLocal ? "Local" : "Dominio")</td>
+                <td>@(u.FbActivo ? "Activo" : "Inactivo")</td>
+                <td class="text-nowrap">
+                    <a class="btn btn-sm btn-outline-primary" asp-action="Usuario" asp-route-id="@u.FiId" style="min-height:40px">Editar</a>
+                    <form asp-action="ActivarUsuario" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@u.FiId" />
+                        <input type="hidden" name="activo" value="@(!u.FbActivo)" />
+                        <button type="submit" class="btn btn-sm btn-outline-secondary" style="min-height:40px">
+                            @(u.FbActivo ? "Desactivar" : "Activar")
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<div class="d-md-none d-flex flex-column gap-3">
+@foreach (var u in Model)
+{
+    <div class="border rounded p-3">
+        <div class="fw-semibold">@u.FcNombre</div>
+        <div class="text-muted small">@u.FcUsuario · @u.FcRolNombre</div>
+        <div class="small mb-2">@(u.FbEsLocal ? "Local" : "Dominio") · @(u.FbActivo ? "Activo" : "Inactivo")</div>
+        <a class="btn btn-sm btn-outline-primary me-1" asp-action="Usuario" asp-route-id="@u.FiId" style="min-height:40px">Editar</a>
+    </div>
+}
+</div>

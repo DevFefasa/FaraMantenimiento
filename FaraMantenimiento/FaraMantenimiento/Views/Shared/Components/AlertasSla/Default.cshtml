@@ -1,0 +1,21 @@
+@*
+  Callers: AlertasSlaViewComponent. Model: int (conteo).
+  Instrucción: «campana con badge rojo con el numero… enlace /Tickets/Bandeja… responsive».
+*@
+@model int
+@{
+    var total = Model;
+    var etiqueta = total == 1 ? "1 alerta SLA pendiente" : $"{total} alertas SLA pendientes";
+}
+<li class="nav-item">
+    <a class="nav-link fara-alerta-sla position-relative d-inline-flex align-items-center justify-content-center"
+       href="/Tickets/Bandeja"
+       title="@etiqueta"
+       aria-label="@etiqueta">
+        <i class="ti ti-bell fs-6" aria-hidden="true"></i>
+        @if (total > 0)
+        {
+            <span class="fara-alerta-sla-badge">@(total > 99 ? "99+" : total.ToString())</span>
+        }
+    </a>
+</li>

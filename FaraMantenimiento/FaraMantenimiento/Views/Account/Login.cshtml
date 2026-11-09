@@ -1,0 +1,42 @@
+﻿@model FaraMantenimiento.Models.LoginViewModel
+@{
+    Layout = "_LayoutLogin";
+    ViewData["Title"] = "Iniciar sesión";
+}
+<div class="fara-login-page">
+    <div class="fara-login-card">
+        <img src="~/assets/images/FefasaLogo.png" alt="FEFASA" class="fara-login-logo" asp-append-version="true" />
+        <h1 class="fara-login-titulo h4">Fara Mantenimiento</h1>
+        <p class="fara-login-sub">Inicie sesión con su usuario de dominio o local</p>
+
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2" role="alert"></div>
+
+        <form asp-controller="Account" asp-action="Login" method="post" novalidate>
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <div class="mb-3">
+                <label asp-for="Usuario" class="form-label fw-semibold">Usuario</label>
+                <input asp-for="Usuario" class="form-control" autocomplete="username" placeholder="usuario" />
+                <span asp-validation-for="Usuario" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Contrasena" class="form-label fw-semibold">Contraseña</label>
+                <input asp-for="Contrasena" class="form-control" type="password" autocomplete="current-password" />
+                <span asp-validation-for="Contrasena" class="text-danger small"></span>
+            </div>
+
+            <div class="form-check mb-4">
+                <input asp-for="Recordar" class="form-check-input" />
+                <label asp-for="Recordar" class="form-check-label">Recordarme en este dispositivo</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 rounded-pill">Iniciar sesión</button>
+        </form>
+    </div>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/validacion-es.js" asp-append-version="true"></script>
+}

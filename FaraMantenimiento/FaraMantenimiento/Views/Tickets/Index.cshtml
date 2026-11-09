@@ -1,0 +1,132 @@
+@model FaraMantenimiento.ViewModels.Tickets.TicketListaViewModel
+@{
+    ViewData["Title"] = Model.Titulo;
+    var combos = Model.Combos;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0">@Model.Titulo</h1>
+    @if (User.HasClaim("permiso", "TICKET_CREAR"))
+    {
+        <a class="btn btn-primary" asp-action="Crear" style="min-height:40px">Nuevo ticket</a>
+    }
+</div>
+
+@if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
+@if (TempData["Error"] != null) { <div class="alert alert-danger">@TempData["Error"]</div> }
+
+@if (Model.Modo == "bandeja")
+{
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" style="min-height:40px">Abiertos</a>
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" asp-route-estado="ASIGNADO" style="min-height:40px">Asignados</a>
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" asp-route-estado="EN_PROCESO" style="min-height:40px">En proceso</a>
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" asp-route-estado="EN_ESPERA" style="min-height:40px">En espera</a>
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" asp-route-estado="RESUELTO" style="min-height:40px">Resueltos</a>
+    </div>
+}
+
+@* Callers: TicketsController Index/Mios/Bandeja/Aprobacion. Schema: TicketListaViewModel + Combos.
+   Instrucción: «revisa a 375px, 768px y 1366px… Index… Corrige problemas de diseño/responsive solo en las vistas». *@
+@if (Model.Modo == "todos" && combos != null)
+{
+    <form method="get" class="row g-2 mb-3 fara-filtros-tickets">
+        <div class="col-12 col-md-3">
+            <label class="form-label d-md-none">Buscar</label>
+            <input name="FcTexto" value="@Model.Filtro.FcTexto" class="form-control" placeholder="Buscar..." />
+        </div>
+        <div class="col-12 col-sm-6 col-md-2">
+            <label class="form-label d-md-none">Estado</label>
+            <select name="FiEstadoId" class="form-select">
+                <option value="">Estado</option>
+                @foreach (var e in combos.Estados)
+                {
+                    if (Model.Filtro.FiEstadoId == e.FiId)
+                    {
+                        <option value="@e.FiId" selected>@e.FcNombre</option>
+                    }
+                    else
+                    {
+                        <option value="@e.FiId">@e.FcNombre</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-2">
+            <label class="form-label d-md-none">Sucursal</label>
+            <select name="FiSucursalId" class="form-select">
+                <option value="">Sucursal</option>
+                @foreach (var s in combos.Sucursales)
+                {
+                    if (Model.Filtro.FiSucursalId == s.FiId)
+                    {
+                        <option value="@s.FiId" selected>@s.FcNombre</option>
+                    }
+                    else
+                    {
+                        <option value="@s.FiId">@s.FcNombre</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-2">
+            <label class="form-label d-md-none">Prioridad</label>
+            <select name="FiPrioridadId" class="form-select">
+                <option value="">Prioridad</option>
+                @foreach (var p in combos.Prioridades)
+                {
+                    if (Model.Filtro.FiPrioridadId == p.FiId)
+                    {
+                        <option value="@p.FiId" selected>@p.FcNombre</option>
+                    }
+                    else
+                    {
+                        <option value="@p.FiId">@p.FcNombre</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-2 d-flex gap-2">
+            <button class="btn btn-outline-primary w-100" style="min-height:40px">Filtrar</button>
+        </div>
+    </form>
+}
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle fara-tabla-movil" data-fara-tabla>
+        <thead class="custom-header">
+            <tr>
+                <th>SLA</th>
+                <th>Número</th>
+                <th>Fecha</th>
+                <th>Sucursal</th>
+                <th>Estado</th>
+                <th>Prioridad</th>
+                <th>Solicitante</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var t in Model.Items)
+        {
+            var sem = (t.FcSemaforoSla ?? "VERDE").ToLowerInvariant();
+            <tr>
+                <td data-label="SLA"><span class="fara-semaforo fara-semaforo-@sem" title="@t.FcSemaforoSla"></span></td>
+                <td data-label="Número">
+                    <a asp-action="Detalle" asp-route-id="@t.FiId">@t.FcNumero</a>
+                    @if (t.FbReincidencia) { <span class="badge text-bg-warning">Reincidencia</span> }
+                </td>
+                <td data-label="Fecha">@t.FdFechaIngreso.ToString("dd/MM/yyyy HH:mm")</td>
+                <td data-label="Sucursal">@t.FcSucursalNombre</td>
+                <td data-label="Estado"><span class="badge fara-badge-catalogo" style="background-color:@(t.FcEstadoColor ?? "#6e6e6e")">@t.FcEstadoNombre</span></td>
+                <td data-label="Prioridad"><span class="badge fara-badge-catalogo" style="background-color:@(t.FcPrioridadColor ?? "#6e6e6e")">@t.FcPrioridadNombre</span></td>
+                <td data-label="Solicitante">@t.FcSolicitanteNombre</td>
+                <td class="fara-col-accion"><a class="btn btn-sm btn-outline-primary" asp-action="Detalle" asp-route-id="@t.FiId" style="min-height:40px">Ver</a></td>
+            </tr>
+        }
+        @if (!Model.Items.Any())
+        {
+            <tr><td colspan="8" class="text-muted">No hay tickets para mostrar.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>
