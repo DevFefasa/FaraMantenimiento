@@ -1,0 +1,27 @@
+@model FaraMantenimiento.ViewModels.Catalogos.CatalogoFormViewModel
+@* Callers: CatalogosController.Crear/Editar cuando !EsModal (página en teléfono)
+   API: envuelve partial _FormularioCatalogo; Scripts sincroniza color picker
+   Schema: CatalogoFormViewModel; Confirm: archivo nuevo (no existía Formulario.cshtml)
+   User instruction: "modal en computadora y pagina en telefono" *@
+@{
+    ViewData["Title"] = Model.Titulo;
+}
+<div class="mb-3">
+    <a asp-action="Entidad" asp-route-tipo="@Model.Tipo" class="small text-decoration-none">← Volver</a>
+    <h1 class="h4 mb-0">@Model.Titulo</h1>
+</div>
+<partial name="_FormularioCatalogo" model="Model" />
+
+@section Scripts {
+<script>
+(function () {
+    var p = document.getElementById('fcColorPicker');
+    var h = document.getElementById('fcColor');
+    if (!p || !h) return;
+    p.addEventListener('input', function () { h.value = p.value; });
+    h.addEventListener('change', function () {
+        if (/^#[0-9A-Fa-f]{6}$/.test(h.value)) p.value = h.value;
+    });
+})();
+</script>
+}

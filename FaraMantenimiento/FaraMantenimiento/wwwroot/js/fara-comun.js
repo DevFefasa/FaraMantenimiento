@@ -10,13 +10,29 @@
         return el ? el.value : '';
     }
 
+    /** Toast (SweetAlert2) arriba a la derecha; se cierra solo. Usar para confirmaciones de éxito. */
+    function toast(ok, msg) {
+        if (!window.Swal) return Promise.resolve();
+        return Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: ok ? 'success' : 'error',
+            title: msg || (ok ? 'Operación correcta' : 'Ocurrió un error'),
+            showConfirmButton: false,
+            timer: ok ? 3000 : 5000,
+            timerProgressBar: true
+        });
+    }
+
+    /** Respuesta estándar: éxito -> toast; error -> SweetAlert modal (requiere que el usuario lo lea). */
     function mostrarMensaje(resp, fallbackOk, fallbackError) {
-        var ok = !!(resp && (resp.fbSucces === true || resp.fbSucces === 1 || resp.fbSucces === '1'));
-        var msg = (resp && resp.fcMensaje) || (ok ? (fallbackOk || 'Operación correcta') : (fallbackError || 'Ocurrió un error'));
+        var ok = !!(resp && (resp.fbSucces === true || resp.fbSucces === 1 || resp.fbSucces === '1' || resp.FbSucces === true));
+        var msg = (resp && (resp.fcMensaje || resp.FcMensaje)) || (ok ? (fallbackOk || 'Operación correcta') : (fallbackError || 'Ocurrió un error'));
         if (!window.Swal) {
             window.alert(msg);
             return Promise.resolve({ isConfirmed: true });
         }
+        if (ok) return toast(true, msg);
         return Swal.fire({
             icon: ok ? 'success' : 'error',
             title: ok ? 'Listo' : 'Atención',
@@ -75,6 +91,7 @@
     window.FaraComun = {
         antiforgeryToken: antiforgeryToken,
         mostrarMensaje: mostrarMensaje,
+        toast: toast,
         ajaxPost: ajaxPost
     };
     window.ajaxPost = ajaxPost;

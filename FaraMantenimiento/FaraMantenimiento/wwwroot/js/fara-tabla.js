@@ -46,7 +46,7 @@
         var arriba = crear('div', 'fara-tabla-top');
         arriba.innerHTML =
             '<label class="fara-tabla-ctl">Mostrar ' +
-            '<select class="form-select form-select-sm" aria-label="Registros por página">' +
+            '<select class="form-select form-select-sm" data-no-select2 aria-label="Registros por página">' +
             OPCIONES.map(function (n) {
                 return '<option value="' + n + '"' + (n === porPagina ? ' selected' : '') + '>' +
                     (n === 0 ? 'Todos' : n) + '</option>';

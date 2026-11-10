@@ -2,15 +2,14 @@
 @{
     var rol = (FM.OrigenDatos.Modelos.Seguridad.RolModelo)ViewBag.Rol;
     ViewData["Title"] = $"Permisos · {rol.FcNombre}";
+    ViewData["SeguridadTab"] = "roles";
+    var esAdmin = string.Equals(rol.FcCodigo, "ADMIN", StringComparison.OrdinalIgnoreCase);
 }
+<partial name="_SeguridadNav" />
 <h1 class="h4 mb-3">Permisos de @rol.FcNombre (@rol.FcCodigo)</h1>
-@if (TempData["Ok"] != null)
+@if (esAdmin)
 {
-    <div class="alert alert-success">@TempData["Ok"]</div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <p class="text-muted small">El rol ADMIN debe conservar el permiso SEGURIDAD.</p>
 }
 <form method="post" asp-action="RolPermisos">
     @Html.AntiForgeryToken()
@@ -18,9 +17,15 @@
     <div class="row g-2 mb-3">
     @foreach (var p in Model)
     {
+        var forzarSeguridad = esAdmin && string.Equals(p.FcCodigo, "SEGURIDAD", StringComparison.OrdinalIgnoreCase);
         <div class="col-12 col-md-6">
             <div class="form-check border rounded p-3">
-                <input class="form-check-input" type="checkbox" name="pantallas" value="@p.FcCodigo" id="p_@p.FcCodigo" @(p.FbAsignado ? "checked" : null) />
+                <input class="form-check-input" type="checkbox" name="pantallas" value="@p.FcCodigo" id="p_@p.FcCodigo"
+                       @(p.FbAsignado || forzarSeguridad ? "checked" : null) @(forzarSeguridad ? "onclick=\"return false;\"" : null) />
+                @if (forzarSeguridad)
+                {
+                    <input type="hidden" name="pantallas" value="SEGURIDAD" />
+                }
                 <label class="form-check-label" for="p_@p.FcCodigo">
                     <strong>@p.FcNombre</strong>
                     <span class="text-muted small d-block">@p.FcCodigo</span>

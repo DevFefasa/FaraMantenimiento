@@ -59,6 +59,8 @@
         if (!$el.is('select')) return true;
         if ($el.attr('data-no-select2') != null) return true;
         if ($el.attr('data-select2-ajax') != null) return true;
+        // SweetAlert2 trae un <select> oculto propio; con select2 aparecía "Seleccionar..." en cada alerta
+        if ($el.hasClass('swal2-select') || $el.closest('.swal2-container').length) return true;
         return false;
     }
 

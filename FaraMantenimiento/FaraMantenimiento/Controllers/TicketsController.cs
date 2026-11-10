@@ -15,13 +15,13 @@ public class TicketsController : Controller
 {
     private readonly TicketServicio _tickets;
     private readonly CatalogoServicio _catalogos;
-    private readonly AdjuntoServicio _adjuntos;
+    private readonly ExportacionServicio _exportacion;
 
-    public TicketsController(TicketServicio tickets, CatalogoServicio catalogos, AdjuntoServicio adjuntos)
+    public TicketsController(TicketServicio tickets, CatalogoServicio catalogos, ExportacionServicio exportacion)
     {
         _tickets = tickets;
         _catalogos = catalogos;
-        _adjuntos = adjuntos;
+        _exportacion = exportacion;
     }
 
     private int UsuarioId => AppAccess.UsuarioId(User) ?? 0;
@@ -33,18 +33,28 @@ public class TicketsController : Controller
         return c;
     }
 
+    // Límites del Dropzone (los lee _AdjuntosInput).
+    private void LimitesAdjuntos()
+    {
+        ViewData["MaxMb"] = _tickets.MaxMbAdjunto;
+        ViewData["MaxCount"] = _tickets.MaxAdjuntosPorSubida;
+    }
+
     [HttpGet, RequierePermiso(Pantallas.TicketCrear)]
     public async Task<IActionResult> Crear(CancellationToken ct)
     {
         ViewData["Title"] = "Nuevo ticket";
         ViewBag.Combos = await CombosAsync(ct);
+        LimitesAdjuntos();
         return View(new TicketCrearViewModel());
     }
 
     [HttpPost, ValidateAntiForgeryToken, RequierePermiso(Pantallas.TicketCrear)]
     public async Task<IActionResult> Crear(TicketCrearViewModel model, List<IFormFile>? adjuntos, CancellationToken ct)
     {
+        ViewData["Title"] = "Nuevo ticket";
         ViewBag.Combos = await CombosAsync(ct);
+        LimitesAdjuntos();
         if (!ModelState.IsValid) return View(model);
 
         var resp = await _tickets.CrearAsync(UsuarioId, model.FiSucursalId, model.FiUbicacionId, model.FcUbicacionDetalle,
@@ -53,7 +63,7 @@ public class TicketsController : Controller
 
         if (!resp.FbSucces)
         {
-            ModelState.AddModelError(string.Empty, resp.FcMensaje);
+            TempData["Error"] = resp.FcMensaje;
             return View(model);
         }
 
@@ -78,38 +88,102 @@ public class TicketsController : Controller
 
         if (rechazados.Count > 0)
             TempData["Error"] = "Ticket creado, pero algunos adjuntos no se guardaron. " + string.Join(" | ", rechazados);
-        TempData["Ok"] = resp.FcMensaje;
+        TempData["Exito"] = resp.FcMensaje;
         return id > 0 ? RedirectToAction(nameof(Detalle), new { id }) : RedirectToAction(nameof(Mios));
     }
 
+    // Bandejas: título, permiso y filtro fijo de cada una (los usan la lista y la exportación).
+    private static readonly Dictionary<string, (string Titulo, string Permiso)> Bandejas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["mios"] = ("Mis tickets", Pantallas.TicketMios),
+        ["bandeja"] = ("Bandeja de mantenimiento", Pantallas.TicketBandeja),
+        ["aprobacion"] = ("Aprobación", Pantallas.TicketAprobacion),
+        ["todos"] = ("Todos los tickets", Pantallas.TicketTodos)
+    };
+
+    private TicketFiltro FiltroDe(string modo, TicketFiltro? filtro, string? estado)
+    {
+        switch (modo.ToLowerInvariant())
+        {
+            case "mios":
+                return new TicketFiltro { FiSolicitanteId = UsuarioId };
+            case "bandeja":
+                return new TicketFiltro { FcEstadoCodigo = estado, FbSoloAbiertos = string.IsNullOrWhiteSpace(estado) };
+            case "aprobacion":
+                return new TicketFiltro { FcEstadoCodigo = EstadosTicket.EnEvaluacion };
+            default:
+                filtro ??= new TicketFiltro();
+                filtro.FiSolicitanteId = null;
+                return filtro;
+        }
+    }
+
     [HttpGet, RequierePermiso(Pantallas.TicketMios)]
-    public Task<IActionResult> Mios(CancellationToken ct) =>
-        ListaAsync("Mis tickets", "mios", new TicketFiltro { FiSolicitanteId = UsuarioId, FiPagina = 1, FiTamano = 50 }, ct);
+    public Task<IActionResult> Mios(CancellationToken ct)
+    {
+        var f = FiltroDe("mios", null, null);
+        f.FiPagina = 1; f.FiTamano = 50;
+        return ListaAsync("mios", f, ct);
+    }
 
     [HttpGet, RequierePermiso(Pantallas.TicketBandeja)]
-    public Task<IActionResult> Bandeja(string? estado, CancellationToken ct) =>
-        ListaAsync("Bandeja de mantenimiento", "bandeja", new TicketFiltro
-        {
-            FcEstadoCodigo = estado,
-            FbSoloAbiertos = string.IsNullOrWhiteSpace(estado),
-            FiPagina = 1,
-            FiTamano = 50
-        }, ct);
+    public Task<IActionResult> Bandeja(string? estado, CancellationToken ct)
+    {
+        var f = FiltroDe("bandeja", null, estado);
+        f.FiPagina = 1; f.FiTamano = 50;
+        ViewBag.Estado = estado;
+        return ListaAsync("bandeja", f, ct);
+    }
 
     [HttpGet, RequierePermiso(Pantallas.TicketAprobacion)]
-    public Task<IActionResult> Aprobacion(CancellationToken ct) =>
-        ListaAsync("Aprobación", "aprobacion", new TicketFiltro { FcEstadoCodigo = EstadosTicket.EnEvaluacion, FiPagina = 1, FiTamano = 50 }, ct);
+    public Task<IActionResult> Aprobacion(CancellationToken ct)
+    {
+        var f = FiltroDe("aprobacion", null, null);
+        f.FiPagina = 1; f.FiTamano = 50;
+        return ListaAsync("aprobacion", f, ct);
+    }
 
     [HttpGet, RequierePermiso(Pantallas.TicketTodos)]
     public async Task<IActionResult> Index(TicketFiltro filtro, CancellationToken ct)
     {
+        filtro = FiltroDe("todos", filtro, null);
         filtro.FiPagina = filtro.FiPagina <= 0 ? 1 : filtro.FiPagina;
         filtro.FiTamano = filtro.FiTamano <= 0 ? 20 : filtro.FiTamano;
-        return await ListaAsync("Todos los tickets", "todos", filtro, ct);
+        return await ListaAsync("todos", filtro, ct);
     }
 
-    private async Task<IActionResult> ListaAsync(string titulo, string modo, TicketFiltro filtro, CancellationToken ct)
+    /// <summary>Excel de una bandeja con los mismos filtros que la pantalla (todas las páginas).</summary>
+    [HttpGet]
+    public async Task<IActionResult> Exportar(string modo, TicketFiltro filtro, string? estado, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(modo) || !Bandejas.TryGetValue(modo, out var b))
+            return NotFound();
+        if (!User.HasClaim(AppAccess.PermisoClaim, b.Permiso))
+            return Forbid();
+
+        var f = FiltroDe(modo, filtro, estado);
+        var (cab, filas) = await _tickets.ListarParaExportarAsync(f, UsuarioId, RolCodigo, ct: ct);
+        if (!cab.FbSucces)
+        {
+            TempData["Error"] = cab.FcMensaje;
+            return modo.ToLowerInvariant() switch
+            {
+                "bandeja" => RedirectToAction(nameof(Bandeja), new { estado }),
+                "aprobacion" => RedirectToAction(nameof(Aprobacion)),
+                "todos" => RedirectToAction(nameof(Index)),
+                _ => RedirectToAction(nameof(Mios))
+            };
+        }
+
+        var titulo = b.Titulo + (string.IsNullOrWhiteSpace(estado) ? "" : $" ({estado})") + $" · {DateTime.Now:dd/MM/yyyy HH:mm}";
+        var bytes = _exportacion.ExcelTickets(titulo, filas);
+        var nombre = $"Tickets_{modo.ToLowerInvariant()}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nombre);
+    }
+
+    private async Task<IActionResult> ListaAsync(string modo, TicketFiltro filtro, CancellationToken ct)
+    {
+        var titulo = Bandejas[modo].Titulo;
         ViewData["Title"] = titulo;
         var resp = await _tickets.ListarAsync(filtro, UsuarioId, RolCodigo, ct);
         var vm = new TicketListaViewModel
@@ -135,7 +209,9 @@ public class TicketsController : Controller
         }
 
         ViewData["Title"] = det.Ticket.FcNumero;
-        var adj = await _tickets.ListarAdjuntosAsync(id, null, UsuarioId, RolCodigo, ct);
+        LimitesAdjuntos();
+        ViewBag.PuedeEvidencia = TicketServicio.PuedeCargarEvidencia(RolCodigo);
+        var adj =await _tickets.ListarAdjuntosAsync(id, null, UsuarioId, RolCodigo, ct);
         return View(new TicketDetalleViewModel
         {
             Ticket = det.Ticket,
@@ -212,7 +288,8 @@ public class TicketsController : Controller
     [HttpPost, ValidateAntiForgeryToken, RequestSizeLimit(110_000_000)]
     public async Task<IActionResult> SubirAdjunto(int id, string etapa, IFormFile archivo, CancellationToken ct)
     {
-        var resp = await _tickets.SubirAdjuntoAsync(id, etapa, archivo, UsuarioId, RolCodigo, ct);        return Json(new { resp.FiCodigo, resp.FcMensaje, resp.FbSucces, resp.FjData });
+        var resp = await _tickets.SubirAdjuntoAsync(id, etapa, archivo, UsuarioId, RolCodigo, ct);
+        return Json(new { resp.FiCodigo, resp.FcMensaje, resp.FbSucces, resp.FjData });
     }
 
     private static int ExtraerId(string? fjData, string clave)

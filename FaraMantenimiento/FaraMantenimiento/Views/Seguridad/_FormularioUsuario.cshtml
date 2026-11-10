@@ -1,0 +1,55 @@
+@model FM.OrigenDatos.Modelos.Seguridad.UsuarioModelo
+@{
+    var roles = (IEnumerable<FM.OrigenDatos.Modelos.Seguridad.RolModelo>)(ViewBag.Roles ?? Array.Empty<FM.OrigenDatos.Modelos.Seguridad.RolModelo>());
+    var esNuevo = Model.FiId <= 0;
+}
+<form method="post" asp-action="Usuario" class="row g-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="fiId" value="@Model.FiId" />
+    <div class="col-12 col-md-6">
+        <label class="form-label">Usuario</label>
+        <input name="fcUsuario" class="form-control" value="@Model.FcUsuario" required maxlength="100" autocomplete="username" />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Nombre</label>
+        <input name="fcNombre" class="form-control" value="@Model.FcNombre" required maxlength="150" />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Correo</label>
+        <input name="fcCorreo" type="email" class="form-control" value="@Model.FcCorreo" maxlength="150" />
+        @if (esNuevo)
+        {
+            <div class="form-text">Obligatorio si deja la contraseña vacía (se genera y se encola el correo).</div>
+        }
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Teléfono</label>
+        <input name="fcTelefono" class="form-control" value="@Model.FcTelefono" maxlength="40" />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Rol</label>
+        <select name="fiRolId" class="form-select" required>
+            <option value="">Seleccione...</option>
+            @foreach (var r in roles)
+            {
+                if (r.FiId == Model.FiRolId)
+                {
+                    <option value="@r.FiId" selected>@r.FcNombre</option>
+                }
+                else
+                {
+                    <option value="@r.FiId">@r.FcNombre</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">@(esNuevo ? "Contraseña" : "Nueva contraseña (opcional)")</label>
+        <input name="contrasenaNueva" type="password" class="form-control" autocomplete="new-password" />
+        <div class="form-text">@(esNuevo ? "Si queda vacía se genera una aleatoria y se encola el correo de bienvenida." : "Deje vacío para no cambiarla.")</div>
+    </div>
+    <div class="col-12 d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary" style="min-height:40px">Guardar</button>
+        <a asp-action="Index" class="btn btn-outline-secondary" data-fara-cancelar style="min-height:40px">Cancelar</a>
+    </div>
+</form>

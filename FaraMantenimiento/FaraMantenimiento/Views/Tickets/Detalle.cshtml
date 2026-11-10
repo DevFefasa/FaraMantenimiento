@@ -6,6 +6,9 @@
     ViewData["Title"] = t.FcNumero;
     string Lps(decimal? n) => n.HasValue ? $"L {n.Value:N2}" : "L 0.00";
     var sem = (t.FcSemaforoSla ?? "VERDE").ToLowerInvariant();
+    static string ColorSeguro(string? c) =>
+        !string.IsNullOrWhiteSpace(c) && System.Text.RegularExpressions.Regex.IsMatch(c, "^#[0-9a-fA-F]{3,8}$") ? c : "#6c757d";
+    var puedeEvidencia = ViewBag.PuedeEvidencia is true;
 }
 @Html.AntiForgeryToken()
 
@@ -17,11 +20,11 @@
         </h1>
         <div class="d-flex flex-wrap gap-2">
             @* Callers: TicketsController.Detalle. Schema: FcEstadoColor/FcPrioridadColor. Instrucción: badges estado.fcColor. *@
-            <span class="badge fara-badge-catalogo" style="background-color:@(t.FcEstadoColor ?? "#6e6e6e")">@t.FcEstadoNombre</span>
-            <span class="badge fara-badge-catalogo" style="background-color:@(t.FcPrioridadColor ?? "#6e6e6e")">@t.FcPrioridadNombre</span>
+            <span class="fara-badge" style="--fara-badge-color:@ColorSeguro(t.FcEstadoColor)">@t.FcEstadoNombre</span>
+            <span class="fara-badge" style="--fara-badge-color:@ColorSeguro(t.FcPrioridadColor)">@t.FcPrioridadNombre</span>
             @if (t.FbReincidencia)
             {
-                <span class="badge text-bg-warning">Reincidencia@(string.IsNullOrEmpty(t.FcTicketReincidenteNumero) ? "" : $" · {t.FcTicketReincidenteNumero}")</span>
+                <span class="fara-badge" style="--fara-badge-color:#d97706">Reincidencia@(string.IsNullOrEmpty(t.FcTicketReincidenteNumero) ? "" : $" · {t.FcTicketReincidenteNumero}")</span>
             }
         </div>
     </div>
@@ -109,7 +112,7 @@
                         {
                             <div class="col-6 col-md-4">
                                 <a href="/Adjuntos/Ver/@ad.FiId" target="_blank" class="d-block border rounded p-2 small">
-                                    <span class="badge text-bg-light">@ad.FcEtapa</span><br />@ad.FcNombreOriginal
+                                    <span class="fara-badge">@ad.FcEtapa</span><br />@ad.FcNombreOriginal
                                 </a>
                             </div>
                         }
@@ -120,22 +123,29 @@
             @if (a.PuedeAdjuntos)
             {
                 <hr />
-                <form id="formAdjunto" class="row g-2 align-items-end">
-                    <div class="col-12 col-md-4">
-                        <label class="form-label">Etapa</label>
-                        <select name="etapa" class="form-select" data-no-select2>
-                            <option value="SOLICITUD">Solicitud</option>
-                            <option value="ANTES">Antes</option>
-                            <option value="DESPUES">Después</option>
-                        </select>
+                <form id="formAdjunto" class="m-0">
+                    <div class="mb-2">
+                        <span class="form-label d-block mb-1">Etapa</span>
+                        <div class="btn-group flex-wrap" role="group" aria-label="Etapa del adjunto">
+                            <input type="radio" class="btn-check" name="etapa" id="etapaSolicitud" value="SOLICITUD" checked />
+                            <label class="btn btn-outline-primary" for="etapaSolicitud" style="min-height:40px">Solicitud</label>
+                            @if (puedeEvidencia)
+                            {
+                                <input type="radio" class="btn-check" name="etapa" id="etapaAntes" value="ANTES" />
+                                <label class="btn btn-outline-primary" for="etapaAntes" style="min-height:40px">Antes</label>
+                                <input type="radio" class="btn-check" name="etapa" id="etapaDespues" value="DESPUES" />
+                                <label class="btn btn-outline-primary" for="etapaDespues" style="min-height:40px">Después</label>
+                            }
+                        </div>
                     </div>
-                    <div class="col-12 col-md-5">
-                        <label class="form-label">Archivo</label>
-                        <input type="file" name="archivo" class="form-control" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" capture="environment" />
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <button type="submit" class="btn btn-outline-primary w-100" style="min-height:40px">Subir</button>
-                    </div>
+                    @{
+                        ViewData["InputName"] = "archivos";
+                        ViewData["Label"] = "Archivos";
+                    }
+                    <partial name="_AdjuntosInput" />
+                    <button type="submit" class="btn btn-primary fara-btn-subir" id="btnSubirAdjuntos" style="min-height:40px">
+                        <i class="ti ti-upload me-1"></i>Subir archivos
+                    </button>
                 </form>
             }
         </div>
@@ -285,11 +295,12 @@
             <option value="INTERNO">Técnico interno</option>
             <option value="PROVEEDOR">Proveedor</option>
         </select>
-        <select id="selTecnico" class="form-select mb-2">
+        @* Sin select2: el toggle de técnico/proveedor oculta el select nativo y select2 lo dejaba visible *@
+        <select id="selTecnico" class="form-select mb-2" data-no-select2>
             <option value="">Técnico...</option>
             @if (combos != null) { foreach (var x in combos.Tecnicos) { <option value="@x.FiId">@x.FcNombre</option> } }
         </select>
-        <select id="selProveedor" class="form-select mb-2" style="display:none">
+        <select id="selProveedor" class="form-select mb-2" style="display:none" data-no-select2>
             <option value="">Proveedor...</option>
             @if (combos != null) { foreach (var x in combos.Proveedores) { <option value="@x.FiId">@x.FcNombre</option> } }
         </select>
@@ -388,14 +399,46 @@
             conforme:$('#conforme').is(':checked'), comentario:this.comentario.value
         }).then(reloadOk);
     });
+    // Dropzone: sube los archivos uno por uno (el servidor valida cada uno) y muestra un resumen.
     $('#formAdjunto').on('submit', function(e){
         e.preventDefault();
-        var fd = new FormData();
-        fd.append('id', id);
-        fd.append('etapa', this.etapa.value);
-        if(!this.archivo.files[0]) return;
-        fd.append('archivo', this.archivo.files[0]);
-        ajaxPost('/Tickets/SubirAdjunto', fd).then(reloadOk);
+        var form = this;
+        var input = form.querySelector('.js-dropzone input[type="file"]');
+        var archivos = input && input.files ? Array.prototype.slice.call(input.files) : [];
+        var etapa = (form.querySelector('input[name="etapa"]:checked') || {}).value || 'SOLICITUD';
+        if (!archivos.length) {
+            FaraComun.mostrarMensaje({ fbSucces: false, fcMensaje: 'Seleccione o arrastre al menos un archivo.' });
+            return;
+        }
+        var $btn = $('#btnSubirAdjuntos').prop('disabled', true);
+        var ok = 0, errores = [];
+        var cadena = $.Deferred().resolve().promise();
+        archivos.forEach(function (f) {
+            cadena = cadena.then(function () {
+                var fd = new FormData();
+                fd.append('id', id);
+                fd.append('etapa', etapa);
+                fd.append('archivo', f);
+                return ajaxPost('/Tickets/SubirAdjunto', fd, { silent: true }).then(function (r) {
+                    if (r && (r.fbSucces === true || r.fbSucces === 1)) ok++;
+                    else errores.push(f.name + ': ' + ((r && r.fcMensaje) || 'error'));
+                }, function (r) {
+                    errores.push(f.name + ': ' + ((r && r.fcMensaje) || 'error'));
+                    return $.Deferred().resolve().promise();
+                });
+            });
+        });
+        cadena.always(function () {
+            $btn.prop('disabled', false);
+            if (!errores.length) {
+                FaraComun.toast(true, ok === 1 ? 'Archivo subido' : ok + ' archivos subidos');
+                setTimeout(function () { location.reload(); }, 900);
+                return;
+            }
+            var msg = (ok ? ok + ' subido(s). ' : '') + 'No se guardaron: ' + errores.join(' | ');
+            FaraComun.mostrarMensaje({ fbSucces: false, fcMensaje: msg });
+            if (ok) $(document).one('click', '.swal2-confirm', function () { location.reload(); });
+        });
     });
 })();
 </script>

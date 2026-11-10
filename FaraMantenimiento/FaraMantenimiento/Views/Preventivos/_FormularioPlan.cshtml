@@ -1,0 +1,138 @@
+@model FaraMantenimiento.ViewModels.Preventivos.PreventivoGuardarViewModel
+@* Callers: PreventivosController.Crear/Editar (PartialView si EsModal); Views/Preventivos/Formulario.cshtml
+   API: form POST Guardar; selects sucursal→ubicacion→activo; data-fara-cancelar
+   Schema: PreventivoGuardarViewModel + ViewBag.Combos (JSON ubicaciones/activos)
+   Confirm: Glob Views/Preventivos/_Formulario* vacío — archivo nuevo
+   User instruction: "dejarlo funcionando con el mismo patron modal/pagina" *@
+@{
+    var combos = ViewBag.Combos as FM.OrigenDatos.Modelos.Catalogos.CatalogoCombosModelo;
+}
+<form method="post" asp-action="Guardar" class="row g-3" id="formPlan">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="FiId" />
+    <div class="col-12">
+        <label class="form-label" asp-for="FcNombre">Nombre</label>
+        <input class="form-control" asp-for="FcNombre" required maxlength="150" />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label" asp-for="FiSucursalId">Sucursal</label>
+        <select class="form-select" asp-for="FiSucursalId" id="FiSucursalId" required>
+            <option value="">Seleccione...</option>
+            @if (combos != null)
+            {
+                foreach (var s in combos.Sucursales)
+                {
+                    if (Model.FiSucursalId == s.FiId) { <option value="@s.FiId" selected>@s.FcNombre</option> }
+                    else { <option value="@s.FiId">@s.FcNombre</option> }
+                }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label" asp-for="FiUbicacionId">Ubicación</label>
+        <select class="form-select" asp-for="FiUbicacionId" id="FiUbicacionId">
+            <option value="">(Opcional)</option>
+            @if (combos != null)
+            {
+                foreach (var u in combos.Ubicaciones.Where(x => Model.FiSucursalId <= 0 || x.FiSucursalId == Model.FiSucursalId))
+                {
+                    if (Model.FiUbicacionId == u.FiId) { <option value="@u.FiId" selected data-suc="@u.FiSucursalId">@u.FcNombre</option> }
+                    else { <option value="@u.FiId" data-suc="@u.FiSucursalId">@u.FcNombre</option> }
+                }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label" asp-for="FiActivoId">Activo</label>
+        <select class="form-select" asp-for="FiActivoId" id="FiActivoId">
+            <option value="">(Opcional)</option>
+            @if (combos != null)
+            {
+                foreach (var a in combos.Activos.Where(x => Model.FiSucursalId <= 0 || x.FiSucursalId == Model.FiSucursalId))
+                {
+                    if (Model.FiActivoId == a.FiId) { <option value="@a.FiId" selected data-suc="@a.FiSucursalId" data-ubi="@a.FiUbicacionId">@a.FcNombre</option> }
+                    else { <option value="@a.FiId" data-suc="@a.FiSucursalId" data-ubi="@a.FiUbicacionId">@a.FcNombre</option> }
+                }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label" asp-for="FiCategoriaId">Categoría</label>
+        <select class="form-select" asp-for="FiCategoriaId" required>
+            <option value="">Seleccione...</option>
+            @if (combos != null)
+            {
+                foreach (var c in combos.Categorias)
+                {
+                    if (Model.FiCategoriaId == c.FiId) { <option value="@c.FiId" selected>@c.FcNombre</option> }
+                    else { <option value="@c.FiId">@c.FcNombre</option> }
+                }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label" asp-for="FiPrioridadId">Prioridad</label>
+        <select class="form-select" asp-for="FiPrioridadId" required>
+            <option value="">Seleccione...</option>
+            @if (combos != null)
+            {
+                foreach (var p in combos.Prioridades)
+                {
+                    if (Model.FiPrioridadId == p.FiId) { <option value="@p.FiId" selected>@p.FcNombre</option> }
+                    else { <option value="@p.FiId">@p.FcNombre</option> }
+                }
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label" asp-for="FiFrecuenciaDias">Frecuencia (días)</label>
+        <input type="number" class="form-control" asp-for="FiFrecuenciaDias" min="1" required />
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label" asp-for="FiDiasAnticipacion">Días anticipación</label>
+        <input type="number" class="form-control" asp-for="FiDiasAnticipacion" min="0" required />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label" asp-for="FdProximaFecha">Próxima fecha</label>
+        <input type="date" class="form-control" asp-for="FdProximaFecha" required />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label" asp-for="FiTecnicoId">Técnico</label>
+        <select class="form-select" asp-for="FiTecnicoId">
+            <option value="">(Opcional)</option>
+            @if (combos != null)
+            {
+                foreach (var t in combos.Tecnicos)
+                {
+                    if (Model.FiTecnicoId == t.FiId) { <option value="@t.FiId" selected>@t.FcNombre</option> }
+                    else { <option value="@t.FiId">@t.FcNombre</option> }
+                }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label" asp-for="FiProveedorId">Proveedor</label>
+        <select class="form-select" asp-for="FiProveedorId">
+            <option value="">(Opcional)</option>
+            @if (combos != null)
+            {
+                foreach (var pr in combos.Proveedores)
+                {
+                    if (Model.FiProveedorId == pr.FiId) { <option value="@pr.FiId" selected>@pr.FcNombre</option> }
+                    else { <option value="@pr.FiId">@pr.FcNombre</option> }
+                }
+            }
+        </select>
+    </div>
+    <div class="col-12">
+        <label class="form-label" asp-for="FcDescripcion">Descripción</label>
+        <textarea class="form-control" asp-for="FcDescripcion" rows="3"></textarea>
+    </div>
+    <div class="col-12 d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary" style="min-height:40px">Guardar</button>
+        <a asp-action="Index" class="btn btn-outline-secondary" data-fara-cancelar style="min-height:40px">Cancelar</a>
+    </div>
+</form>
+
+<script type="application/json" id="prev-ubicaciones">@Html.Raw(System.Text.Json.JsonSerializer.Serialize((combos?.Ubicaciones ?? new List<FM.OrigenDatos.Modelos.Catalogos.CatalogoItemModelo>()).Select(x => new { x.FiId, x.FcNombre, x.FiSucursalId })))</script>
+<script type="application/json" id="prev-activos">@Html.Raw(System.Text.Json.JsonSerializer.Serialize((combos?.Activos ?? new List<FM.OrigenDatos.Modelos.Catalogos.CatalogoItemModelo>()).Select(x => new { x.FiId, x.FcNombre, x.FiSucursalId, x.FiUbicacionId })))</script>

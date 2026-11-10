@@ -81,6 +81,32 @@ html[data-bs-theme="light"][data-color-theme="Blue_Theme"] th {
   font-family: Arial, Helvetica, sans-serif !important;
 }
 
+/* Pestañas (nav-pills) con el verde de la marca */
+html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .nav-pills {
+  --bs-nav-pills-link-active-bg: #1b5e35;
+  --bs-nav-pills-link-active-color: #fff;
+  --bs-nav-link-color: #1b5e35;
+  --bs-nav-link-hover-color: #144a29;
+}
+html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .nav-pills .nav-link.active {
+  background-color: #1b5e35 !important;
+  color: #fff !important;
+}
+
+/* Botones con altura mínima táctil: texto centrado vertical (a, button y label igual) */
+.btn[style*="min-height"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+}
+
+/* Los iconos conservan su fuente aunque lleven .text-muted, .btn, etc. */
+html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .ti,
+html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .ti::before {
+  font-family: "tabler-icons" !important;
+}
+
 html[data-bs-theme="light"][data-color-theme="Blue_Theme"] h1,
 html[data-bs-theme="light"][data-color-theme="Blue_Theme"] h2,
 html[data-bs-theme="light"][data-color-theme="Blue_Theme"] h3,
@@ -1248,6 +1274,7 @@ html[data-layout="vertical"] .left-sidebar.mini .fara-logo-icon { display: inlin
 }
 .fara-tabla-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .fara-tabla-ctl { display: inline-flex; align-items: center; gap: 0.4rem; color: #6e6e6e; font-size: 0.9rem; }
+.fara-tabla-ctl select.form-select { width: auto; min-width: 84px; min-height: 40px; }
 .fara-paginacion { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .fara-pag-btn {
   min-width: 40px;
@@ -1428,6 +1455,19 @@ html[data-bs-theme="light"][data-color-theme="Blue_Theme"] select.form-select op
 html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
   color: #9aa0a6 !important;
 }
+/* Select2 con la misma letra y alto que los inputs (Arial 0.9rem, 40px) */
+html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .select2-container--bootstrap-5 .select2-selection {
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 0.9rem !important;
+  min-height: 40px;
+}
+html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+  line-height: 1.5;
+}
+html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .select2-container--bootstrap-5 .select2-dropdown {
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 0.9rem;
+}
 
 /* Header móvil 375px */
 @media (max-width: 575.98px) {
@@ -1462,4 +1502,135 @@ html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .select2-container--b
 }
 .fara-semaforo {
   box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+}
+
+/* ========== Reglas UI 4.1: badges, columna de acciones ========== */
+.fara-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--fara-badge-color, #6c757d);
+  background: color-mix(in srgb, var(--fara-badge-color, #6c757d) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--fara-badge-color, #6c757d) 45%, transparent);
+}
+.fara-badge-activo { --fara-badge-color: #16a34a; }
+.fara-badge-inactivo { --fara-badge-color: #dc2626; }
+
+.fara-col-accion { white-space: nowrap; width: 1%; }
+.fara-col-accion .btn + .btn,
+.fara-col-accion .btn + form,
+.fara-col-accion form + .btn,
+.fara-col-accion form + form { margin-left: 0.35rem; }
+.fara-col-accion form { display: inline-block; margin: 0; }
+
+/* ========== Sidebar: sin espacio reservado al pie; todo el menú recorrible ========== */
+.left-sidebar .scroll-sidebar {
+  height: calc(100% - 70px) !important;
+  padding-bottom: 0.75rem;
+}
+html[data-layout="vertical"] body[data-sidebartype="mini-sidebar"] .left-sidebar .scroll-sidebar {
+  height: calc(100% - 70px) !important;
+}
+.left-sidebar #sidebarnav { padding-bottom: 1rem; }
+
+/* ========== Header: dropdown de perfil y de notificaciones (estilo Spike) ========== */
+.fara-perfil-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0.25rem 0.35rem;
+  border-radius: 999px;
+  min-height: 40px;
+  color: inherit;
+}
+.fara-perfil-btn:hover,
+.fara-perfil-btn[aria-expanded="true"] { background: rgba(27, 94, 53, 0.08); }
+.fara-avatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f2ec;
+  color: #1B5E35;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.fara-avatar-lg { width: 56px; height: 56px; min-width: 56px; font-size: 1.25rem; }
+.fara-dropdown {
+  width: 320px;
+  max-width: calc(100vw - 1rem);
+  border: 0;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 0;
+  overflow: hidden;
+}
+.fara-dropdown-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem 0.75rem;
+}
+.fara-dropdown-cab h6 { margin: 0; font-weight: 600; }
+.fara-dropdown-cuerpo { max-height: 340px; overflow-y: auto; }
+.fara-dropdown-pie { padding: 0.75rem 1.25rem 1rem; }
+.fara-notif-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.65rem 1.25rem;
+  color: #222;
+  text-decoration: none;
+}
+.fara-notif-item:hover { background: #f5f8f6; color: #222; }
+.fara-notif-icono {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--fara-badge-color, #6c757d);
+  background: color-mix(in srgb, var(--fara-badge-color, #6c757d) 15%, transparent);
+}
+.fara-notif-titulo { font-weight: 600; font-size: 0.875rem; line-height: 1.25; }
+.fara-notif-sub { font-size: 0.78rem; color: #6e6e6e; }
+.fara-notif-vacio { padding: 1.5rem 1.25rem; text-align: center; color: #6e6e6e; }
+.fara-perfil-datos { padding: 1rem 1.25rem; display: flex; gap: 0.85rem; align-items: center; border-bottom: 1px solid #eee; }
+.fara-perfil-datos .fara-perfil-nombre { font-weight: 600; line-height: 1.2; word-break: break-word; }
+.fara-perfil-datos .fara-perfil-linea { font-size: 0.8rem; color: #6e6e6e; display: flex; align-items: center; gap: 0.3rem; word-break: break-all; }
+.fara-perfil-enlace {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1.25rem;
+  color: #222;
+  text-decoration: none;
+  min-height: 44px;
+}
+.fara-perfil-enlace:hover { background: #f5f8f6; color: #1B5E35; }
+.fara-btn-salir-ancho { width: 100%; justify-content: center; min-height: 40px; }
+@media (max-width: 575.98px) {
+  .fara-dropdown { width: calc(100vw - 1rem); }
+  header.topbar .dropdown-menu.fara-dropdown { position: fixed !important; left: 0.5rem !important; right: 0.5rem !important; top: 64px !important; transform: none !important; }
+}
+.fara-btn-salir.fara-btn-salir-ancho span { display: inline !important; }
+@media (max-width: 575.98px) { .fara-btn-subir { width: 100%; } }
+/* Badges dentro de tablas en vista de tarjetas (móvil): que no se salgan de la celda */
+@media (max-width: 767.98px) {
+  .fara-tabla-movil .fara-badge { white-space: normal; max-width: 100%; text-align: left; }
 }

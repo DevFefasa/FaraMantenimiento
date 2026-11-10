@@ -3,8 +3,11 @@ using FM.OrigenDatos.Modelos.Adjunto;
 using FM.OrigenDatos.Modelos.Tickets;
 using FM.OrigenDatos.Repositorios;
 using FM.Programacion.Constantes;
+using FM.Programacion.Opciones;
+using FM.Programacion.Servicios.Correo;
 using FM.Programacion.Servicios.Tickets;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace FM.Programacion.Servicios;
 
@@ -13,15 +16,19 @@ public class TicketServicio
     private readonly TicketRepositorio _tickets;
     private readonly AdjuntoServicio _adjuntos;
     private readonly SeguridadServicio _seguridad;
+    private readonly AdjuntosOptions _optAdjuntos;
+    private readonly CorreoServicio _correos;
 
     // Pantallas que dan visibilidad sobre tickets de otros usuarios.
     private static readonly string[] PantallasVerTodos = { Pantallas.TicketTodos, Pantallas.TicketBandeja, Pantallas.TicketAprobacion };
 
-    public TicketServicio(TicketRepositorio tickets, AdjuntoServicio adjuntos, SeguridadServicio seguridad)
+    public TicketServicio(TicketRepositorio tickets, AdjuntoServicio adjuntos, SeguridadServicio seguridad, IOptions<AdjuntosOptions> optAdjuntos, CorreoServicio correos)
     {
         _tickets = tickets;
         _adjuntos = adjuntos;
         _seguridad = seguridad;
+        _optAdjuntos = optAdjuntos.Value;
+        _correos = correos;
     }
 
     private static RespuestaSp Prohibido(string mensaje) => new() { FiCodigo = 403, FcMensaje = mensaje, FbSucces = false };
@@ -69,6 +76,30 @@ public class TicketServicio
             p_fiTamano = filtro.FiTamano
         };
         return await _tickets.ListarAsync(param, ct);
+    }
+
+    /// <summary>
+    /// Todas las filas que cumplen el filtro (para exportar). El SP pagina hasta 200,
+    /// así que se recorren páginas hasta un tope de seguridad.
+    /// </summary>
+    public async Task<(RespuestaSp Cabecera, List<TicketListaModelo> Filas)> ListarParaExportarAsync(
+        TicketFiltro filtro, int fiUsuarioId, string? rolCodigo, int maxFilas = 10_000, CancellationToken ct = default)
+    {
+        const int tam = 200;
+        var filas = new List<TicketListaModelo>();
+        RespuestaSp cab = new() { FiCodigo = 200, FcMensaje = "OK", FbSucces = true };
+        for (var pagina = 1; filas.Count < maxFilas; pagina++)
+        {
+            filtro.FiPagina = pagina;
+            filtro.FiTamano = tam;
+            var resp = await ListarAsync(filtro, fiUsuarioId, rolCodigo, ct);
+            if (!resp.FbSucces) return (resp, filas);
+            var lote = resp.Datos.ToList();
+            filas.AddRange(lote);
+            if (lote.Count < tam) break;
+        }
+        if (filas.Count > maxFilas) filas = filas.Take(maxFilas).ToList();
+        return (cab, filas);
     }
 
     public async Task<(TicketObtenerResultado Detalle, TicketAccionesDisponibles Acciones)> ObtenerAsync(int fiTicketId, int fiUsuarioId, string? rolCodigo, CancellationToken ct = default)
@@ -135,11 +166,31 @@ public class TicketServicio
         return a;
     }
 
-    public Task<RespuestaSp> CrearAsync(
+    public async Task<RespuestaSp> CrearAsync(
         int fiUsuarioId, int fiSucursalId, int? fiUbicacionId, string? fcUbicacionDetalle,
         int? fiActivoId, int fiTipoId, int fiCategoriaId, int fiPrioridadId,
-        string fcDescripcion, DateTime? fdFechaSugerida, CancellationToken ct = default) =>
-        _tickets.CrearAsync(fiUsuarioId, fiSucursalId, fiUbicacionId, fcUbicacionDetalle, fiActivoId, fiTipoId, fiCategoriaId, fiPrioridadId, fcDescripcion, fdFechaSugerida, ct);
+        string fcDescripcion, DateTime? fdFechaSugerida, CancellationToken ct = default)
+    {
+        var resp = await _tickets.CrearAsync(fiUsuarioId, fiSucursalId, fiUbicacionId, fcUbicacionDetalle, fiActivoId, fiTipoId, fiCategoriaId, fiPrioridadId, fcDescripcion, fdFechaSugerida, ct);
+        // Correos después del SP exitoso; EncolarXxx no lanza (registra en log). Sin ct: el ticket ya existe.
+        if (resp.FbSucces && IdDe(resp.FjData, "ticket") is int id and > 0)
+            await _correos.EncolarTicketCreadoAsync(id, fiUsuarioId);
+        return resp;
+    }
+
+    private static int? IdDe(string? fjData, string clave)
+    {
+        if (string.IsNullOrWhiteSpace(fjData)) return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(fjData);
+            if (!doc.RootElement.TryGetProperty(clave, out var el)) return null;
+            if (el.ValueKind == System.Text.Json.JsonValueKind.Number && el.TryGetInt32(out var n)) return n;
+            if (el.ValueKind == System.Text.Json.JsonValueKind.String && int.TryParse(el.GetString(), out var s)) return s;
+        }
+        catch (System.Text.Json.JsonException) { }
+        return null;
+    }
 
     public async Task<RespuestaSp> CambiarEstadoAsync(int fiTicketId, string fcEstado, int? fiMotivo, string? comentario, int fiUsuarioId, string? rol, CancellationToken ct = default)
     {
@@ -160,7 +211,10 @@ public class TicketServicio
             _ => EsAdmin(rol)
         };
         if (!ok) return new RespuestaSp { FiCodigo = 403, FcMensaje = "No tiene permiso para esta transición", FbSucces = false };
-        return await _tickets.CambiarEstadoAsync(fiTicketId, est, fiMotivo, comentario, fiUsuarioId, ct);
+        var resp = await _tickets.CambiarEstadoAsync(fiTicketId, est, fiMotivo, comentario, fiUsuarioId, ct);
+        if (resp.FbSucces)
+            await _correos.EncolarCambioEstadoAsync(fiTicketId, est, comentario, fiUsuarioId);
+        return resp;
     }
 
     public async Task<RespuestaSp> AsignarAsync(int fiTicketId, string tipo, int? tecnicoId, int? proveedorId, DateTime? programada, int fiUsuarioId, string? rol, CancellationToken ct = default)
@@ -168,7 +222,10 @@ public class TicketServicio
         var (det, acciones) = await ObtenerAsync(fiTicketId, fiUsuarioId, rol, ct);
         if (!det.Cabecera.FbSucces) return det.Cabecera;
         if (!acciones.PuedeAsignar) return new RespuestaSp { FiCodigo = 403, FcMensaje = "No tiene permiso para asignar", FbSucces = false };
-        return await _tickets.AsignarAsync(fiTicketId, tipo, tecnicoId, proveedorId, programada, fiUsuarioId, ct);
+        var resp = await _tickets.AsignarAsync(fiTicketId, tipo, tecnicoId, proveedorId, programada, fiUsuarioId, ct);
+        if (resp.FbSucces)
+            await _correos.EncolarTicketAsignadoAsync(fiTicketId, fiUsuarioId);
+        return resp;
     }
 
     public async Task<RespuestaSp> CambiarPrioridadAsync(int fiTicketId, int fiPrioridadId, int fiUsuarioId, string? rol, CancellationToken ct = default)
@@ -221,6 +278,10 @@ public class TicketServicio
     // ===== Adjuntos del ticket (con control de acceso) =====
 
     public int MaxAdjuntosPorSubida => _adjuntos.MaxPorSubida;
+    public int MaxMbAdjunto => Math.Max(1, _optAdjuntos.TamanoMaximoMB);
+
+    /// <summary>¿Puede cargar evidencia ANTES/DESPUES? (misma regla que SubirAdjuntoAsync).</summary>
+    public static bool PuedeCargarEvidencia(string? rol) => EsMant(rol) || EsJefatura(rol);
 
     public async Task<RespuestaSp> SubirAdjuntoAsync(int fiTicketId, string? etapa, IFormFile archivo, int fiUsuarioId, string? rol, CancellationToken ct = default)
     {
@@ -231,7 +292,7 @@ public class TicketServicio
         var et = AdjuntoServicio.NormalizarEtapa(string.IsNullOrWhiteSpace(etapa) ? "SOLICITUD" : etapa);
         if (et == null) return new RespuestaSp { FiCodigo = 400, FcMensaje = "La etapa debe ser SOLICITUD, ANTES o DESPUES", FbSucces = false };
         // Evidencia ANTES/DESPUES solo la carga mantenimiento o jefatura.
-        if (et != "SOLICITUD" && !EsMant(rol) && !EsJefatura(rol))
+        if (et != "SOLICITUD" && !PuedeCargarEvidencia(rol))
             return Prohibido("Solo mantenimiento puede cargar evidencia ANTES/DESPUES");
 
         return await _adjuntos.GuardarAsync(AdjuntoServicio.EntidadTicket, fiTicketId, et, archivo, fiUsuarioId, ct);

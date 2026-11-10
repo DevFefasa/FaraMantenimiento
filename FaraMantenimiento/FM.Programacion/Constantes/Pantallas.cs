@@ -14,4 +14,15 @@ public static class Pantallas
     public const string Preventivos = "PREVENTIVOS";
 
     public const string ClaimType = "permiso";
+
+    /// <summary>Códigos referenciados en código; no se borran ni se les cambia el código.</summary>
+    public static readonly IReadOnlyList<string> CodigosProtegidos = new[]
+    {
+        Dashboard, TicketCrear, TicketMios, TicketBandeja, TicketAprobacion, TicketTodos,
+        Catalogos, Reportes, Seguridad, Preventivos
+    };
+
+    public static bool EsProtegida(string? fcCodigo) =>
+        !string.IsNullOrWhiteSpace(fcCodigo) &&
+        CodigosProtegidos.Contains(fcCodigo.Trim(), StringComparer.OrdinalIgnoreCase);
 }

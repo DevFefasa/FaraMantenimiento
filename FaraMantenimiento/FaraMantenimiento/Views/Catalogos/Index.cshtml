@@ -1,6 +1,7 @@
 @* Callers: CatalogosController.Index
    API: tarjetas → Entidad?tipo=
-   User instruction: "indice con tarjetas y CRUD ... Responsive a 375px." *@
+   Confirm: reescribe Index.cshtml existente; sin div.alert (TempData vía _Alertas)
+   User instruction: "Quitar el div #msgBox / alertas fijas" *@
 @{
     ViewData["Title"] = "Catálogos";
     var cards = new (string Tipo, string Titulo, string Desc)[]
@@ -20,7 +21,6 @@
     };
 }
 <h1 class="h4 mb-3">Catálogos</h1>
-@if (TempData["Error"] != null) { <div class="alert alert-danger">@TempData["Error"]</div> }
 <div class="row g-3">
 @foreach (var c in cards)
 {

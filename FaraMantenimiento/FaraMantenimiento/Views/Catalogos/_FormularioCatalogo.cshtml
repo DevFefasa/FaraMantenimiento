@@ -1,0 +1,271 @@
+@model FaraMantenimiento.ViewModels.Catalogos.CatalogoFormViewModel
+@* Callers: CatalogosController.Crear/Editar (PartialView si EsModal); Views/Catalogos/Formulario.cshtml
+   API: form POST Guardar + antiforgery; enlace Cancelar data-fara-cancelar
+   Schema: campos por Tipo; FcColor con input type=color + hex (#6c757d)
+   Confirm: Glob Views/Catalogos/_Formulario* vacío (archivo nuevo)
+   User instruction: "Crear/Editar como parcial _FormularioCatalogo ... input type=\"color\" (mas el texto hex)" *@
+@{
+    var tipo = Model.Tipo;
+    var c = Model.Combos;
+    var color = string.IsNullOrWhiteSpace(Model.FcColor) ? "#6c757d" : Model.FcColor!;
+}
+<form method="post" asp-action="Guardar" asp-route-tipo="@tipo" class="row g-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="fiId" value="@Model.FiId" />
+
+    @if (tipo == "parametros")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcClave">Clave</label>
+            <input class="form-control" name="fcClave" id="fcClave" value="@Model.FcClave" required @(Model.FiId > 0 ? "readonly" : null) />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcValor">Valor</label>
+            <input class="form-control" name="fcValor" id="fcValor" value="@Model.FcValor" required />
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="fcDescripcion">Descripción</label>
+            <input class="form-control" name="fcDescripcion" id="fcDescripcion" value="@Model.FcDescripcion" />
+        </div>
+    }
+    else
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcCodigo">Código</label>
+            <input class="form-control" name="fcCodigo" id="fcCodigo" value="@Model.FcCodigo" required @(tipo == "estados" ? "readonly" : null) />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcNombre">Nombre</label>
+            <input class="form-control" name="fcNombre" id="fcNombre" value="@Model.FcNombre" required />
+        </div>
+    }
+
+    @if (tipo == "sucursales")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcTipo">Tipo</label>
+            <select class="form-select" name="fcTipo" id="fcTipo" required>
+                @foreach (var t in new[] { "SUCURSAL", "AREA", "DEPARTAMENTO" })
+                {
+                    if (Model.FcTipo == t) { <option value="@t" selected>@t</option> }
+                    else { <option value="@t">@t</option> }
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiRegionId">Región</label>
+            <select class="form-select" name="fiRegionId" id="fiRegionId" required>
+                <option value="">Seleccione...</option>
+                @foreach (var r in c.Regiones)
+                {
+                    if (Model.FiRegionId == r.FiId) { <option value="@r.FiId" selected>@r.FcNombre</option> }
+                    else { <option value="@r.FiId">@r.FcNombre</option> }
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcDireccion">Dirección</label>
+            <input class="form-control" name="fcDireccion" id="fcDireccion" value="@Model.FcDireccion" />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcTelefono">Teléfono</label>
+            <input class="form-control" name="fcTelefono" id="fcTelefono" value="@Model.FcTelefono" />
+        </div>
+    }
+
+    @if (tipo == "ubicaciones")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiSucursalId">Sucursal</label>
+            <select class="form-select" name="fiSucursalId" id="fiSucursalId" required>
+                <option value="">Seleccione...</option>
+                @foreach (var s in c.Sucursales)
+                {
+                    if (Model.FiSucursalId == s.FiId) { <option value="@s.FiId" selected>@s.FcNombre</option> }
+                    else { <option value="@s.FiId">@s.FcNombre</option> }
+                }
+            </select>
+        </div>
+    }
+
+    @if (tipo == "activos")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcMarca">Marca</label>
+            <input class="form-control" name="fcMarca" id="fcMarca" value="@Model.FcMarca" />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcModelo">Modelo</label>
+            <input class="form-control" name="fcModelo" id="fcModelo" value="@Model.FcModelo" />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcSerie">Serie</label>
+            <input class="form-control" name="fcSerie" id="fcSerie" value="@Model.FcSerie" />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiSucursalId">Sucursal</label>
+            <select class="form-select" name="fiSucursalId" id="fiSucursalId" required>
+                <option value="">Seleccione...</option>
+                @foreach (var s in c.Sucursales)
+                {
+                    if (Model.FiSucursalId == s.FiId) { <option value="@s.FiId" selected>@s.FcNombre</option> }
+                    else { <option value="@s.FiId">@s.FcNombre</option> }
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiUbicacionId">Ubicación</label>
+            <select class="form-select" name="fiUbicacionId" id="fiUbicacionId">
+                <option value="">(Opcional)</option>
+                @foreach (var u in c.Ubicaciones)
+                {
+                    if (Model.FiUbicacionId == u.FiId) { <option value="@u.FiId" selected data-suc="@u.FiSucursalId">@u.FcNombre</option> }
+                    else { <option value="@u.FiId" data-suc="@u.FiSucursalId">@u.FcNombre</option> }
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiCategoriaId">Categoría</label>
+            <select class="form-select" name="fiCategoriaId" id="fiCategoriaId">
+                <option value="">(Opcional)</option>
+                @foreach (var cat in c.Categorias)
+                {
+                    if (Model.FiCategoriaId == cat.FiId) { <option value="@cat.FiId" selected>@cat.FcNombre</option> }
+                    else { <option value="@cat.FiId">@cat.FcNombre</option> }
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fdFechaInstalacion">Fecha instalación</label>
+            <input type="date" class="form-control" name="fdFechaInstalacion" id="fdFechaInstalacion" value="@(Model.FdFechaInstalacion?.ToString("yyyy-MM-dd"))" />
+        </div>
+    }
+
+    @if (tipo == "tipos")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiOrden">Orden</label>
+            <input type="number" class="form-control" name="fiOrden" id="fiOrden" value="@Model.FiOrden" />
+        </div>
+        <div class="col-12 col-md-6"><div class="form-check mt-4">
+            <input type="checkbox" class="form-check-input" name="fbRequiereAprobacion" id="fbRequiereAprobacion" value="true" @(Model.FbRequiereAprobacion ? "checked" : null) />
+            <label class="form-check-label" for="fbRequiereAprobacion">Requiere aprobación</label>
+        </div></div>
+        <div class="col-12 col-md-6"><div class="form-check mt-4">
+            <input type="checkbox" class="form-check-input" name="fbEsPreventivo" id="fbEsPreventivo" value="true" @(Model.FbEsPreventivo ? "checked" : null) />
+            <label class="form-check-label" for="fbEsPreventivo">Es preventivo</label>
+        </div></div>
+        <div class="col-12 col-md-6"><div class="form-check mt-4">
+            <input type="checkbox" class="form-check-input" name="fbEsPostFalla" id="fbEsPostFalla" value="true" @(Model.FbEsPostFalla ? "checked" : null) />
+            <label class="form-check-label" for="fbEsPostFalla">Es post-falla</label>
+        </div></div>
+        <div class="col-12 col-md-6"><div class="form-check mt-4">
+            <input type="checkbox" class="form-check-input" name="fbRequiereFechaSugerida" id="fbRequiereFechaSugerida" value="true" @(Model.FbRequiereFechaSugerida ? "checked" : null) />
+            <label class="form-check-label" for="fbRequiereFechaSugerida">Requiere fecha sugerida</label>
+        </div></div>
+    }
+
+    @if (tipo == "categorias" || tipo == "motivos")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiOrden">Orden</label>
+            <input type="number" class="form-control" name="fiOrden" id="fiOrden" value="@Model.FiOrden" />
+        </div>
+    }
+
+    @if (tipo == "prioridades")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiHorasRespuesta">Horas respuesta</label>
+            <input type="number" class="form-control" name="fiHorasRespuesta" id="fiHorasRespuesta" min="1" value="@Model.FiHorasRespuesta" required />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiHorasSolucion">Horas solución</label>
+            <input type="number" class="form-control" name="fiHorasSolucion" id="fiHorasSolucion" min="1" value="@Model.FiHorasSolucion" required />
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label" for="fcColorPicker">Color</label>
+            <input type="color" class="form-control form-control-color w-100" id="fcColorPicker" value="@color" style="min-height:40px" />
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label" for="fcColor">Hex</label>
+            <input class="form-control" name="fcColor" id="fcColor" value="@color" maxlength="20" required />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiOrden">Orden</label>
+            <input type="number" class="form-control" name="fiOrden" id="fiOrden" value="@Model.FiOrden" />
+        </div>
+    }
+
+    @if (tipo == "estados")
+    {
+        <div class="col-6 col-md-3">
+            <label class="form-label" for="fcColorPicker">Color</label>
+            <input type="color" class="form-control form-control-color w-100" id="fcColorPicker" value="@color" style="min-height:40px" />
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label" for="fcColor">Hex</label>
+            <input class="form-control" name="fcColor" id="fcColor" value="@color" maxlength="20" required />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiOrden">Orden</label>
+            <input type="number" class="form-control" name="fiOrden" id="fiOrden" value="@Model.FiOrden" />
+        </div>
+        <div class="col-12 col-md-6"><div class="form-check mt-4">
+            <input type="checkbox" class="form-check-input" name="fbFinal" id="fbFinal" value="true" @(Model.FbFinal ? "checked" : null) />
+            <label class="form-check-label" for="fbFinal">Es final</label>
+        </div></div>
+    }
+
+    @if (tipo == "proveedores")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcRtn">RTN</label>
+            <input class="form-control" name="fcRtn" id="fcRtn" value="@Model.FcRtn" />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcContacto">Contacto</label>
+            <input class="form-control" name="fcContacto" id="fcContacto" value="@Model.FcContacto" />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcTelefono">Teléfono</label>
+            <input class="form-control" name="fcTelefono" id="fcTelefono" value="@Model.FcTelefono" />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcCorreo">Correo</label>
+            <input class="form-control" name="fcCorreo" id="fcCorreo" value="@Model.FcCorreo" />
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="fcEspecialidad">Especialidad</label>
+            <input class="form-control" name="fcEspecialidad" id="fcEspecialidad" value="@Model.FcEspecialidad" />
+        </div>
+    }
+
+    @if (tipo == "tecnicos")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fcTelefono">Teléfono</label>
+            <input class="form-control" name="fcTelefono" id="fcTelefono" value="@Model.FcTelefono" />
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiCategoriaId">Categoría</label>
+            <select class="form-select" name="fiCategoriaId" id="fiCategoriaId">
+                <option value="">(Opcional)</option>
+                @foreach (var cat in c.Categorias)
+                {
+                    if (Model.FiCategoriaId == cat.FiId) { <option value="@cat.FiId" selected>@cat.FcNombre</option> }
+                    else { <option value="@cat.FiId">@cat.FcNombre</option> }
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiUsuarioId">Usuario Id (opcional)</label>
+            <input type="number" class="form-control" name="fiUsuarioId" id="fiUsuarioId" value="@Model.FiUsuarioId" />
+        </div>
+    }
+
+    <div class="col-12 d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary" style="min-height:40px">Guardar</button>
+        <a asp-action="Entidad" asp-route-tipo="@tipo" class="btn btn-outline-secondary" data-fara-cancelar style="min-height:40px">Cancelar</a>
+    </div>
+</form>

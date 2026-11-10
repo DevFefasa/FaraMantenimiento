@@ -26,6 +26,10 @@ public class PreventivoCalendarioViewModel
     public CumplimientoPreventivoResumenModelo Cumplimiento { get; set; } = new();
     public IReadOnlyList<CumplimientoPreventivoDetalleModelo> CumplimientoDetalle { get; set; } = Array.Empty<CumplimientoPreventivoDetalleModelo>();
     public CatalogoCombosModelo? Combos { get; set; }
+    // Callers: PreventivosController.Calendario; Views/Preventivos/Calendario.cshtml leyenda
+    // API: EstadosLeyenda para badges de color; Schema: EstadoModelo.FcCodigo/FcNombre/FcColor (#hex)
+    // User instruction: "Agregar una leyenda de colores de estado"
+    public IReadOnlyList<FM.OrigenDatos.Modelos.Catalogos.EstadoModelo> EstadosLeyenda { get; set; } = Array.Empty<FM.OrigenDatos.Modelos.Catalogos.EstadoModelo>();
 }
 
 public class PreventivoGuardarViewModel

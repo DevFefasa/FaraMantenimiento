@@ -1,6 +1,7 @@
 using FM.OrigenDatos.Dependencia;
 using FM.Programacion.Opciones;
 using FM.Programacion.Servicios;
+using FM.Programacion.Servicios.Correo;
 using FM.Programacion.Tareas;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,10 @@ public static class ProgramacionServiceCollectionExtensions
         services.Configure<AdjuntosOptions>(config.GetSection(AdjuntosOptions.Section));
 
         services.AddScoped<SeguridadServicio>();
+        services.AddScoped<CorreoPendienteServicio>();
+        services.Configure<SmtpOptions>(config.GetSection(SmtpOptions.Seccion));
+        services.AddScoped<ISmtpCorreoSender, SmtpCorreoSender>();
+        services.AddScoped<CorreoServicio>();
         services.AddScoped<AdjuntoServicio>();
         services.AddScoped<CatalogoServicio>();
         services.AddScoped<TicketServicio>();
@@ -24,6 +29,7 @@ public static class ProgramacionServiceCollectionExtensions
         services.AddScoped<PreventivoServicio>();
         services.AddHostedService<PreventivoTarea>();
         services.AddHostedService<SlaTarea>();
+        services.AddHostedService<CorreoTarea>();
         return services;
     }
 }

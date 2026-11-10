@@ -1,16 +1,17 @@
-@*
-  Callers: Views/Shared/_Layout.cshtml (<partial name="_Header" />).
-  No existe _Header (Glob Shared sin él).
-  Claims: "nombre", ClaimTypes.Role. Form POST /Account/Logout + antiforgery.
-  Instrucción: "_Header con nombre (claim \"nombre\"), rol (ClaimTypes.Role) y boton cerrar sesion (form POST /Account/Logout con antiforgery)."
-*@
+@* Barra superior: menú, campana de alertas SLA (dropdown) y perfil (dropdown con Cambiar clave y Cerrar sesión). *@
 @using System.Security.Claims
+@using FaraMantenimiento.Helpers
 @{
-    var nombre = User.FindFirst("nombre")?.Value
+    var nombre = User.FindFirst(AppAccess.NombreClaim)?.Value
         ?? User.FindFirst(ClaimTypes.GivenName)?.Value
         ?? User.Identity?.Name
         ?? "";
+    var usuario = User.Identity?.Name ?? "";
     var rol = User.FindFirst(ClaimTypes.Role)?.Value;
+    var correo = User.FindFirst(ClaimTypes.Email)?.Value;
+    var esLocal = User.HasClaim(AppAccess.EsLocalClaim, "1");
+    var iniciales = string.Concat(nombre.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpperInvariant(p[0])));
+    if (string.IsNullOrEmpty(iniciales)) iniciales = "?";
 }
 <header class="topbar sticky-top">
     <div class="with-vertical">
@@ -32,29 +33,56 @@
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     <ul class="navbar-nav flex-row ms-auto align-items-center justify-content-center flex-shrink-0 gap-2">
-                        @* Callers: AlertasSlaViewComponent. Instrucción etapa 5: campana SLA junto al usuario. *@
                         @await Component.InvokeAsync("AlertasSla")
-                        <li class="nav-item d-flex align-items-center">
-                            <span class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center me-2"
-                                  style="width:40px;height:40px;" aria-hidden="true">
-                                <i class="ti ti-user"></i>
-                            </span>
-                            <span class="d-none d-sm-block text-end me-2">
-                                <span class="fara-header-nombre d-block">@nombre</span>
-                                @if (!string.IsNullOrWhiteSpace(rol))
+
+                        <li class="nav-item dropdown">
+                            <button type="button" class="fara-perfil-btn" id="faraPerfilDrop" data-bs-toggle="dropdown"
+                                    data-bs-display="static" aria-expanded="false" aria-label="Perfil de @nombre">
+                                <span class="fara-avatar" aria-hidden="true">@iniciales</span>
+                                <span class="d-none d-sm-block text-start">
+                                    <span class="fara-header-nombre d-block">@nombre</span>
+                                    @if (!string.IsNullOrWhiteSpace(rol))
+                                    {
+                                        <span class="fara-header-rol">@rol</span>
+                                    }
+                                </span>
+                                <i class="ti ti-chevron-down d-none d-sm-inline text-muted" aria-hidden="true"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end fara-dropdown" aria-labelledby="faraPerfilDrop">
+                                <div class="fara-perfil-datos">
+                                    <span class="fara-avatar fara-avatar-lg" aria-hidden="true">@iniciales</span>
+                                    <div class="min-w-0">
+                                        <div class="fara-perfil-nombre">@nombre</div>
+                                        @if (!string.IsNullOrWhiteSpace(rol))
+                                        {
+                                            <div class="fara-perfil-linea"><i class="ti ti-shield-check"></i>@rol</div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(correo))
+                                        {
+                                            <div class="fara-perfil-linea"><i class="ti ti-mail"></i>@correo</div>
+                                        }
+                                        else if (!string.IsNullOrWhiteSpace(usuario))
+                                        {
+                                            <div class="fara-perfil-linea"><i class="ti ti-user"></i>@usuario</div>
+                                        }
+                                    </div>
+                                </div>
+                                @if (esLocal)
                                 {
-                                    <span class="fara-header-rol">@rol</span>
+                                    <a class="fara-perfil-enlace" asp-controller="Account" asp-action="CambiarClave">
+                                        <i class="ti ti-key fs-5"></i><span>Cambiar clave</span>
+                                    </a>
                                 }
-                            </span>
-                        </li>
-                        <li class="nav-item">
-                            <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="fara-btn-salir" title="Cerrar sesión">
-                                    <i class="ti ti-logout"></i>
-                                    <span>Cerrar sesión</span>
-                                </button>
-                            </form>
+                                <div class="fara-dropdown-pie">
+                                    <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="fara-btn-salir fara-btn-salir-ancho">
+                                            <i class="ti ti-logout"></i>
+                                            <span>Cerrar sesión</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
                         </li>
                     </ul>
                 }

@@ -34,13 +34,16 @@ public class SeguridadServicio
     private readonly IActiveDirectoryApi _ad;
     private readonly IConfiguration _config;
     private readonly IMemoryCache _cache;
+    private readonly CorreoPendienteServicio _correos;
 
-    public SeguridadServicio(SeguridadRepositorio repo, IActiveDirectoryApi ad, IConfiguration config, IMemoryCache cache)
+    public SeguridadServicio(
+        SeguridadRepositorio repo, IActiveDirectoryApi ad, IConfiguration config, IMemoryCache cache, CorreoPendienteServicio correos)
     {
         _repo = repo;
         _ad = ad;
         _config = config;
         _cache = cache;
+        _correos = correos;
     }
 
     public static string NormalizarUsuario(string? usuario)
@@ -125,38 +128,51 @@ public class SeguridadServicio
         }
 
         var local = await _repo.ObtenerPorLoginAsync(userName, ct);
-        if (local.FbSucces && local.Datos.FirstOrDefault() is { } uLocal && uLocal.FbEsLocal)
+        if (local.FbSucces && local.Datos.FirstOrDefault() is { } uLocal)
         {
-            var debeCrearClave = false;
-            bool ok;
+            // Cualquier usuario puede autenticarse con clave local si tiene hash (o clave maestra sin hash).
+            var debeCambiarClave = false;
+            bool? intentoLocal = null;
+            bool ok = false;
             if (!string.IsNullOrEmpty(uLocal.FcClaveHash))
             {
-                // Con clave propia la clave maestra ya no sirve.
                 ok = VerificarClave(uLocal.FcClaveHash, contrasena, out var rehash);
+                intentoLocal = true;
                 if (ok && rehash)
-                    await GuardarHashAsync(uLocal, HashClave(contrasena), ct);
+                    await GuardarHashAsync(uLocal, HashClave(contrasena), debeCambiarClave: false, ct);
+                if (ok)
+                    debeCambiarClave = uLocal.FbDebeCambiarClave;
             }
             else
             {
                 var master = _config["Auth:LocalPassword"];
-                ok = !string.IsNullOrEmpty(master) &&
-                     CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(contrasena), Encoding.UTF8.GetBytes(master));
-                debeCrearClave = ok;
+                if (!string.IsNullOrEmpty(master) &&
+                    CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(contrasena), Encoding.UTF8.GetBytes(master)))
+                {
+                    ok = true;
+                    debeCambiarClave = true;
+                    intentoLocal = true;
+                }
             }
 
-            if (!ok)
+            if (intentoLocal == true)
             {
-                RegistrarFallo(userName);
-                await _repo.RegistrarAccesoAsync(uLocal.FiId, userName, "LOGIN_FAIL", ip, "Clave local incorrecta", ct);
-                return (new RespuestaSp { FiCodigo = 401, FcMensaje = "Usuario o contraseña incorrectos.", FbSucces = false }, null, false);
-            }
+                if (!ok)
+                {
+                    RegistrarFallo(userName);
+                    await _repo.RegistrarAccesoAsync(uLocal.FiId, userName, "LOGIN_FAIL", ip, "Clave local incorrecta", ct);
+                    return (new RespuestaSp { FiCodigo = 401, FcMensaje = "Usuario o contraseña incorrectos.", FbSucces = false }, null, false);
+                }
 
-            LimpiarFallos(userName);
-            await _repo.RegistrarAccesoAsync(uLocal.FiId, userName, "LOGIN_OK", ip,
-                debeCrearClave ? "Local con clave maestra (sin clave propia)" : "Local", ct);
-            if (debeCrearClave)
-                await _repo.RegistrarAccesoAsync(uLocal.FiId, userName, "CLAVE_MAESTRA", ip, "Uso de la clave maestra; debe crear su clave", ct);
-            return (new RespuestaSp { FiCodigo = 200, FcMensaje = "OK", FbSucces = true, FjData = local.FjData }, uLocal, debeCrearClave);
+                LimpiarFallos(userName);
+                await _repo.RegistrarAccesoAsync(uLocal.FiId, userName, "LOGIN_OK", ip,
+                    debeCambiarClave && string.IsNullOrEmpty(uLocal.FcClaveHash)
+                        ? "Local con clave maestra (sin clave propia)"
+                        : (debeCambiarClave ? "Local (debe cambiar clave)" : "Local"), ct);
+                if (debeCambiarClave && string.IsNullOrEmpty(uLocal.FcClaveHash))
+                    await _repo.RegistrarAccesoAsync(uLocal.FiId, userName, "CLAVE_MAESTRA", ip, "Uso de la clave maestra; debe crear su clave", ct);
+                return (new RespuestaSp { FiCodigo = 200, FcMensaje = "OK", FbSucces = true, FjData = local.FjData }, uLocal, debeCambiarClave);
+            }
         }
 
         var ad = await _ad.LoginAsync(userName, contrasena, ct);
@@ -181,9 +197,21 @@ public class SeguridadServicio
         return (new RespuestaSp { FiCodigo = 200, FcMensaje = "OK", FbSucces = true, FjData = alta.FjData }, uAd, false);
     }
 
-    private Task<RespuestaSp> GuardarHashAsync(UsuarioModelo u, string hash, CancellationToken ct) =>
+    private Task<RespuestaSp> GuardarHashAsync(UsuarioModelo u, string hash, bool debeCambiarClave, CancellationToken ct) =>
         _repo.GuardarUsuarioAsync(u.FiId, u.FcUsuario, u.FcNombre, u.FcCargo, u.FcCorreo, u.FcTelefono,
-            u.FiRolId, u.FiSucursalId, u.FbEsLocal, hash, u.FiId, ct);
+            u.FiRolId, u.FiSucursalId, true, hash, debeCambiarClave, u.FiId, ct);
+
+    /// <summary>Genera contraseña aleatoria segura (12+ caracteres).</summary>
+    public static string GenerarClaveAleatoria(int longitud = 14)
+    {
+        const string alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+        if (longitud < 12) longitud = 12;
+        var bytes = RandomNumberGenerator.GetBytes(longitud);
+        var chars = new char[longitud];
+        for (var i = 0; i < longitud; i++)
+            chars[i] = alfabeto[bytes[i] % alfabeto.Length];
+        return new string(chars);
+    }
 
     /// <summary>El usuario local cambia (o crea) su propia clave.</summary>
     public async Task<RespuestaSp> CambiarClavePropiaAsync(
@@ -197,20 +225,18 @@ public class SeguridadServicio
         var obt = await _repo.ObtenerUsuarioAsync(fiUsuarioId, ct);
         if (!obt.FbSucces || obt.Datos.FirstOrDefault() is not { } u)
             return new RespuestaSp { FiCodigo = 404, FcMensaje = "El usuario no existe", FbSucces = false };
-        if (!u.FbEsLocal)
-            return new RespuestaSp { FiCodigo = 400, FcMensaje = "Los usuarios de dominio cambian su clave en Active Directory", FbSucces = false };
-
-        // Usuario sin clave propia (entró con la clave maestra) no necesita la actual.
-        // ObtenerUsuario puede no traer el hash; se relee por login para validarlo.
+        // Usuario sin clave propia (clave maestra / temporal) no necesita la actual.
         var porLogin = await _repo.ObtenerPorLoginAsync(u.FcUsuario, ct);
-        var hashActual = porLogin.Datos.FirstOrDefault()?.FcClaveHash;
-        if (!string.IsNullOrEmpty(hashActual) && !VerificarClave(hashActual, claveActual ?? "", out _))
+        var uLogin = porLogin.Datos.FirstOrDefault();
+        var hashActual = uLogin?.FcClaveHash;
+        var debeCambiar = uLogin?.FbDebeCambiarClave == true || string.IsNullOrEmpty(hashActual);
+        if (!string.IsNullOrEmpty(hashActual) && !debeCambiar && !VerificarClave(hashActual, claveActual ?? "", out _))
         {
             await _repo.RegistrarAccesoAsync(u.FiId, u.FcUsuario, "CAMBIO_CLAVE_FAIL", ip, "Clave actual incorrecta", ct);
             return new RespuestaSp { FiCodigo = 400, FcMensaje = "La clave actual es incorrecta", FbSucces = false };
         }
 
-        var resp = await GuardarHashAsync(u, HashClave(claveNueva), ct);
+        var resp = await GuardarHashAsync(u, HashClave(claveNueva), debeCambiarClave: false, ct);
         if (resp.FbSucces)
         {
             await _repo.RegistrarAccesoAsync(u.FiId, u.FcUsuario, "CAMBIO_CLAVE", ip, null, ct);
@@ -219,11 +245,18 @@ public class SeguridadServicio
         return resp;
     }
 
-    /// <summary>¿El usuario local todavía no tiene clave propia?</summary>
+    /// <summary>¿Debe ir a CambiarClave? (sin hash o fbDebeCambiarClave).</summary>
+    public async Task<bool> UsuarioDebeCambiarClaveAsync(string fcUsuario, CancellationToken ct = default)
+    {
+        var r = await _repo.ObtenerPorLoginAsync(NormalizarUsuario(fcUsuario), ct);
+        return r.Datos.FirstOrDefault() is { } u && (string.IsNullOrEmpty(u.FcClaveHash) || u.FbDebeCambiarClave);
+    }
+
+    /// <summary>¿El usuario todavía no tiene clave propia? (compat. vista CambiarClave).</summary>
     public async Task<bool> UsuarioLocalSinClaveAsync(string fcUsuario, CancellationToken ct = default)
     {
         var r = await _repo.ObtenerPorLoginAsync(NormalizarUsuario(fcUsuario), ct);
-        return r.Datos.FirstOrDefault() is { FbEsLocal: true } u && string.IsNullOrEmpty(u.FcClaveHash);
+        return r.Datos.FirstOrDefault() is { } u && string.IsNullOrEmpty(u.FcClaveHash);
     }
 
     public Task<RespuestaSp<PermisoPantallaModelo>> PermisosUsuarioAsync(int fiUsuarioId, CancellationToken ct = default) =>
@@ -265,13 +298,65 @@ public class SeguridadServicio
     public Task<RespuestaSp<UsuarioModelo>> ObtenerUsuarioAsync(int fiId, CancellationToken ct = default) =>
         _repo.ObtenerUsuarioAsync(fiId, ct);
 
-    public Task<RespuestaSp> GuardarUsuarioAsync(
-        int? fiId, string fcUsuario, string fcNombre, string? fcCargo, string? fcCorreo, string? fcTelefono,
-        int fiRolId, int? fiSucursalId, bool fbEsLocal, string? contrasenaNueva, int fiUsuarioId, CancellationToken ct = default)
+    public async Task<RespuestaSp> GuardarUsuarioAsync(
+        int? fiId, string fcUsuario, string fcNombre, string? fcCorreo, string? fcTelefono,
+        int fiRolId, int? fiSucursalId, string? contrasenaNueva, int fiUsuarioId, CancellationToken ct = default)
     {
-        string? hash = string.IsNullOrWhiteSpace(contrasenaNueva) ? null : HashClave(contrasenaNueva);
-        return _repo.GuardarUsuarioAsync(fiId, NormalizarUsuario(fcUsuario), fcNombre, fcCargo, fcCorreo, fcTelefono,
-            fiRolId, fiSucursalId, fbEsLocal, hash, fiUsuarioId, ct);
+        if (fiRolId <= 0)
+            return new RespuestaSp { FiCodigo = 400, FcMensaje = "Seleccione un rol.", FbSucces = false };
+
+        var esNuevo = fiId is null or <= 0;
+        var userName = NormalizarUsuario(fcUsuario);
+        string? hash = null;
+        var debeCambiar = false;
+        string? claveGenerada = null;
+
+        if (!string.IsNullOrWhiteSpace(contrasenaNueva))
+        {
+            hash = HashClave(contrasenaNueva);
+            debeCambiar = esNuevo;
+        }
+        else if (esNuevo)
+        {
+            if (string.IsNullOrWhiteSpace(fcCorreo))
+                return new RespuestaSp
+                {
+                    FiCodigo = 400,
+                    FcMensaje = "Ingrese el correo para enviar la contraseña generada",
+                    FbSucces = false
+                };
+            claveGenerada = GenerarClaveAleatoria();
+            hash = HashClave(claveGenerada);
+            debeCambiar = true;
+        }
+
+        var resp = await _repo.GuardarUsuarioAsync(
+            fiId, userName, fcNombre, null, fcCorreo, fcTelefono,
+            fiRolId, fiSucursalId, fbEsLocal: hash != null || !esNuevo, hash,
+            esNuevo || hash != null ? debeCambiar : null, fiUsuarioId, ct);
+
+        if (!resp.FbSucces) return resp;
+
+        if (esNuevo && claveGenerada != null)
+        {
+            var correo = await _correos.EncolarBienvenidaAsync(fcCorreo!.Trim(), userName, fcNombre, claveGenerada, fiUsuarioId, ct);
+            if (!correo.FbSucces)
+                return new RespuestaSp
+                {
+                    FiCodigo = correo.FiCodigo,
+                    FcMensaje = correo.FcMensaje,
+                    FbSucces = false
+                };
+            return new RespuestaSp
+            {
+                FiCodigo = resp.FiCodigo,
+                FcMensaje = "Usuario creado. Se enviará un correo con la contraseña cuando el correo esté configurado.",
+                FbSucces = true,
+                FjData = resp.FjData
+            };
+        }
+
+        return resp;
     }
 
     public Task<RespuestaSp> ActivarUsuarioAsync(int fiId, bool fbActivo, int fiUsuarioId, CancellationToken ct = default) =>
@@ -280,8 +365,21 @@ public class SeguridadServicio
     public Task<RespuestaSp<RolModelo>> ListarRolesAsync(bool soloActivos = true, CancellationToken ct = default) =>
         _repo.ListarRolesAsync(soloActivos, ct);
 
-    public Task<RespuestaSp<PantallaModelo>> ListarPantallasAsync(CancellationToken ct = default) =>
-        _repo.ListarPantallasAsync(true, ct);
+    public Task<RespuestaSp<RolModelo>> ObtenerRolAsync(int fiId, CancellationToken ct = default) =>
+        _repo.ObtenerRolAsync(fiId, ct);
+
+    public Task<RespuestaSp<PantallaModelo>> ListarPantallasAsync(bool soloActivos = true, CancellationToken ct = default) =>
+        _repo.ListarPantallasAsync(soloActivos, ct);
+
+    public Task<RespuestaSp<PantallaModelo>> ObtenerPantallaAsync(int fiId, CancellationToken ct = default) =>
+        _repo.ObtenerPantallaAsync(fiId, ct);
+
+    public Task<RespuestaSp> GuardarPantallaAsync(
+        int? fiId, string fcCodigo, string fcNombre, string? fcDescripcion, int fiOrden, int fiUsuarioId, CancellationToken ct = default) =>
+        _repo.GuardarPantallaAsync(fiId, fcCodigo, fcNombre, fcDescripcion, fiOrden, fiUsuarioId, ct);
+
+    public Task<RespuestaSp> ActivarPantallaAsync(int fiId, bool fbActivo, int fiUsuarioId, CancellationToken ct = default) =>
+        _repo.ActivarPantallaAsync(fiId, fbActivo, fiUsuarioId, ct);
 
     public Task<(RespuestaSp Cabecera, List<RolModelo> Rol, List<PantallaModelo> Pantallas)> ObtenerRolPermisosAsync(int fiRolId, CancellationToken ct = default) =>
         _repo.ObtenerRolPermisosAsync(fiRolId, ct);

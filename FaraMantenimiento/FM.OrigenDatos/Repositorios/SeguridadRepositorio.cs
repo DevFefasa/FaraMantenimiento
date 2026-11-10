@@ -44,7 +44,7 @@ public class SeguridadRepositorio
 
     public Task<RespuestaSp> GuardarUsuarioAsync(
         int? fiId, string fcUsuario, string fcNombre, string? fcCargo, string? fcCorreo, string? fcTelefono,
-        int fiRolId, int? fiSucursalId, bool fbEsLocal, string? fcClaveHash, int fiUsuarioId, CancellationToken ct = default) =>
+        int fiRolId, int? fiSucursalId, bool fbEsLocal, string? fcClaveHash, bool? fbDebeCambiarClave, int fiUsuarioId, CancellationToken ct = default) =>
         _sp.EjecutarAsync("sp_seguridad_usuario_guardar", new
         {
             p_fiId = fiId ?? 0,
@@ -57,6 +57,7 @@ public class SeguridadRepositorio
             p_fiSucursalId = fiSucursalId,
             p_fbEsLocal = fbEsLocal ? 1 : 0,
             p_fcClaveHash = fcClaveHash,
+            p_fbDebeCambiarClave = fbDebeCambiarClave.HasValue ? (fbDebeCambiarClave.Value ? 1 : 0) : (int?)null,
             p_fiUsuarioId = fiUsuarioId
         }, ct);
 
@@ -68,6 +69,27 @@ public class SeguridadRepositorio
 
     public Task<RespuestaSp<PantallaModelo>> ListarPantallasAsync(bool soloActivos = true, CancellationToken ct = default) =>
         _sp.EjecutarAsync<PantallaModelo>("sp_seguridad_pantalla_listar", new { p_fbSoloActivos = soloActivos ? 1 : 0 }, ct);
+
+    public Task<RespuestaSp<PantallaModelo>> ObtenerPantallaAsync(int fiId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync<PantallaModelo>("sp_seguridad_pantalla_obtener", new { p_fiId = fiId }, ct);
+
+    public Task<RespuestaSp> GuardarPantallaAsync(
+        int? fiId, string fcCodigo, string fcNombre, string? fcDescripcion, int fiOrden, int fiUsuarioId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync("sp_seguridad_pantalla_guardar", new
+        {
+            p_fiId = fiId ?? 0,
+            p_fcCodigo = fcCodigo,
+            p_fcNombre = fcNombre,
+            p_fcDescripcion = fcDescripcion,
+            p_fiOrden = fiOrden,
+            p_fiUsuarioId = fiUsuarioId
+        }, ct);
+
+    public Task<RespuestaSp> ActivarPantallaAsync(int fiId, bool fbActivo, int fiUsuarioId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync("sp_seguridad_pantalla_activar", new { p_fiId = fiId, p_fbActivo = fbActivo ? 1 : 0, p_fiUsuarioId = fiUsuarioId }, ct);
+
+    public Task<RespuestaSp<RolModelo>> ObtenerRolAsync(int fiId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync<RolModelo>("sp_seguridad_rol_obtener", new { p_fiId = fiId }, ct);
 
     public Task<(RespuestaSp Cabecera, List<RolModelo> Rol, List<PantallaModelo> Pantallas)> ObtenerRolPermisosAsync(int fiRolId, CancellationToken ct = default) =>
         _sp.EjecutarDosAsync<RolModelo, PantallaModelo>("sp_seguridad_rol_permisos_obtener", new { p_fiRolId = fiRolId }, ct);

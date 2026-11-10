@@ -1,0 +1,58 @@
+@model FaraMantenimiento.ViewModels.Preventivos.PreventivoGuardarViewModel
+@* Callers: PreventivosController.Crear/Editar cuando !EsModal (página teléfono)
+   API: envuelve _FormularioPlan; Scripts filtra ubicacion/activo por sucursal
+   Schema: PreventivoGuardarViewModel; Confirm: archivo nuevo
+   User instruction: "modal en computadora y pagina en telefono" *@
+@{
+    ViewData["Title"] = ViewData["Title"] ?? (Model.FiId is > 0 ? "Editar plan" : "Nuevo plan");
+}
+<div class="mb-3">
+    <a asp-action="Index" class="small text-decoration-none">← Planes</a>
+    <h1 class="h4 mb-0">@ViewData["Title"]</h1>
+</div>
+<partial name="_FormularioPlan" model="Model" />
+
+@section Scripts {
+<script>
+(function () {
+    function initFiltros(root) {
+        root = root || document;
+        var ubiEl = root.querySelector('#prev-ubicaciones');
+        var actEl = root.querySelector('#prev-activos');
+        if (!ubiEl || !actEl) return;
+        var ubicaciones = JSON.parse(ubiEl.textContent || '[]');
+        var activos = JSON.parse(actEl.textContent || '[]');
+        var suc = root.querySelector('#FiSucursalId');
+        var ubiSel = root.querySelector('#FiUbicacionId');
+        var actSel = root.querySelector('#FiActivoId');
+        if (!suc || !ubiSel || !actSel) return;
+
+        function filtrar() {
+            var s = suc.value;
+            var ubiActual = ubiSel.value;
+            var actActual = actSel.value;
+            ubiSel.innerHTML = '<option value="">(Opcional)</option>';
+            ubicaciones.filter(function (u) { return !s || String(u.FiSucursalId) === String(s); }).forEach(function (u) {
+                var o = document.createElement('option');
+                o.value = u.FiId; o.textContent = u.FcNombre;
+                if (String(u.FiId) === String(ubiActual)) o.selected = true;
+                ubiSel.appendChild(o);
+            });
+            var ubi = ubiSel.value;
+            actSel.innerHTML = '<option value="">(Opcional)</option>';
+            activos.filter(function (a) {
+                return (!s || String(a.FiSucursalId) === String(s)) && (!ubi || !a.FiUbicacionId || String(a.FiUbicacionId) === String(ubi));
+            }).forEach(function (a) {
+                var o = document.createElement('option');
+                o.value = a.FiId; o.textContent = a.FcNombre;
+                if (String(a.FiId) === String(actActual)) o.selected = true;
+                actSel.appendChild(o);
+            });
+        }
+        suc.addEventListener('change', filtrar);
+        ubiSel.addEventListener('change', filtrar);
+    }
+    initFiltros(document);
+})();
+</script>
+}

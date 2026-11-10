@@ -49,8 +49,10 @@ public class AccountController : Controller
             new(AppAccess.FiIdClaim, usuario.FiId.ToString()),
             new(AppAccess.RolIdClaim, usuario.FiRolId.ToString())
         };
-        if (usuario.FbEsLocal)
+        if (usuario.FbEsLocal || debeCrearClave || usuario.FbDebeCambiarClave || !string.IsNullOrEmpty(usuario.FcClaveHash))
             claims.Add(new Claim(AppAccess.EsLocalClaim, "1"));
+        if (!string.IsNullOrWhiteSpace(usuario.FcCorreo))
+            claims.Add(new Claim(ClaimTypes.Email, usuario.FcCorreo));
         if (permisos.FbSucces)
         {
             foreach (var p in permisos.Datos)
@@ -67,10 +69,10 @@ public class AccountController : Controller
                 ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
             });
 
-        // Entró con la clave maestra: debe crear su clave propia.
+        // Clave maestra / temporal: debe crear o cambiar su clave.
         if (debeCrearClave)
         {
-            TempData["Error"] = "Debe crear su clave personal antes de continuar.";
+            TempData["Error"] = "Debe crear o cambiar su clave personal antes de continuar.";
             return RedirectToAction(nameof(CambiarClave));
         }
 
@@ -84,13 +86,16 @@ public class AccountController : Controller
     [Authorize, HttpGet]
     public async Task<IActionResult> CambiarClave(CancellationToken ct)
     {
-        if (!User.HasClaim(AppAccess.EsLocalClaim, "1"))
+        var nombre = User.Identity?.Name ?? "";
+        var debe = await _seguridad.UsuarioDebeCambiarClaveAsync(nombre, ct);
+        var sinClave = await _seguridad.UsuarioLocalSinClaveAsync(nombre, ct);
+        if (!User.HasClaim(AppAccess.EsLocalClaim, "1") && !debe && !sinClave)
         {
             TempData["Error"] = "Los usuarios de dominio cambian su clave en Active Directory.";
             return RedirectToAction("Index", "Home");
         }
         ViewData["Title"] = "Cambiar clave";
-        ViewBag.SinClave = await _seguridad.UsuarioLocalSinClaveAsync(User.Identity?.Name ?? "", ct);
+        ViewBag.SinClave = sinClave || debe;
         return View();
     }
 
@@ -104,7 +109,7 @@ public class AccountController : Controller
             TempData["Error"] = resp.FcMensaje;
             return RedirectToAction(nameof(CambiarClave));
         }
-        TempData["Ok"] = resp.FcMensaje;
+        TempData["Exito"] = resp.FcMensaje;
         return RedirectToAction("Index", "Home");
     }
 

@@ -1,8 +1,9 @@
 @model FaraMantenimiento.ViewModels.Preventivos.PreventivoCalendarioViewModel
 @* Callers: PreventivosController.Calendario
-   API: grilla mensual desktop + lista por día móvil + tarjeta % cumplimiento + Generar ahora
-   Schema: PreventivoCalendarioViewModel (Eventos, Cumplimiento)
-   User instruction: "/Preventivos/Calendario vista mensual (tabla/grilla responsive, en movil como lista por dia) con enlace al ticket generado, boton Generar ahora (POST), tarjeta con % cumplimiento del plan. Responsive a 375px." *@
+   API: grilla mensual + móvil + leyenda EstadosLeyenda + Generar ahora toast (@section Scripts)
+   Schema: Eventos.FcColor (#hex); fara-badge --fara-badge-color; /Tickets/Detalle/{id}
+   Confirm: reescribe Calendario.cshtml existente
+   User instruction: "Calendario: cada ticket del calendario resaltado con el color de SU ESTADO actual... leyenda de colores... Generar ahora... toast" *@
 @{
     ViewData["Title"] = "Calendario preventivo";
     var cultura = new System.Globalization.CultureInfo("es-HN");
@@ -28,11 +29,10 @@
     <h1 class="h4 mb-0 text-capitalize">Calendario · @nombreMes</h1>
     <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-outline-secondary" asp-action="Index" style="min-height:40px">Planes</a>
-        <button type="button" class="btn btn-outline-primary" id="btnGenerar" style="min-height:40px">Generar ahora</button>
+        <button type="button" class="btn btn-outline-primary" id="btnGenerar" style="min-height:40px"
+                title="Genera ya los tickets de planes vencidos; también se ejecuta solo cada día">Generar ahora</button>
     </div>
 </div>
-
-<div id="msgBox" class="d-none"></div>
 
 <div class="row g-3 mb-3">
     <div class="col-12 col-md-4">
@@ -54,13 +54,26 @@
                 {
                     foreach (var s in Model.Combos.Sucursales)
                     {
-                        <option value="@s.FiId" selected="@(Model.SucursalId == s.FiId)">@s.FcNombre</option>
+                        if (Model.SucursalId == s.FiId) { <option value="@s.FiId" selected>@s.FcNombre</option> }
+                        else { <option value="@s.FiId">@s.FcNombre</option> }
                     }
                 }
             </select>
         </form>
     </div>
 </div>
+
+@if (Model.EstadosLeyenda.Count > 0)
+{
+    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+        <span class="small text-muted me-1">Leyenda de estados:</span>
+        @foreach (var est in Model.EstadosLeyenda)
+        {
+            <span class="fara-badge" style="--fara-badge-color:@(est.FcColor ?? "#6c757d")" title="@est.FcCodigo">@est.FcNombre</span>
+        }
+        <span class="fara-badge fara-badge-inactivo" title="Sin ticket aún">Proyectado</span>
+    </div>
+}
 
 <div class="d-none d-md-block table-responsive mb-4">
     <table class="table table-bordered mb-0" style="table-layout:fixed">
@@ -81,7 +94,6 @@
                 }
                 else
                 {
-                    @* Callers: PreventivosController.Calendario. Fix Razor: @foreach/@if en markup. Schema: eventos por día. *@
                     porDia.TryGetValue(cel.Fecha!.Value, out var evsDia);
                     <td style="height:110px;vertical-align:top;font-size:.8rem">
                         <div class="fw-semibold mb-1">@cel.Dia</div>
@@ -89,13 +101,22 @@
                         {
                             @foreach (var e in evsDia.Take(4))
                             {
+                                var color = string.IsNullOrWhiteSpace(e.FcColor) ? "#6c757d" : e.FcColor!;
+                                var tip = $"{e.FcEstadoNombre ?? "Proyectado"} · {e.FcNombre}";
                                 if (e.FiTicketId.HasValue)
                                 {
-                                    <div class="mb-1"><a asp-controller="Tickets" asp-action="Detalle" asp-route-id="@e.FiTicketId">@(e.FcTicketNumero ?? e.FcNombre)</a></div>
+                                    <div class="mb-1">
+                                        <a asp-controller="Tickets" asp-action="Detalle" asp-route-id="@e.FiTicketId"
+                                           class="fara-badge text-decoration-none" style="--fara-badge-color:@color" title="@tip">
+                                            @(e.FcTicketNumero ?? e.FcNombre)
+                                        </a>
+                                    </div>
                                 }
                                 else
                                 {
-                                    <div class="text-muted mb-1">@e.FcNombre</div>
+                                    <div class="mb-1">
+                                        <span class="fara-badge fara-badge-inactivo" title="@tip">@e.FcNombre</span>
+                                    </div>
                                 }
                             }
                             @if (evsDia.Count > 4)
@@ -123,6 +144,8 @@
                 <div class="fw-semibold mb-2">@fechaMovil.ToString("dddd dd/MM", cultura)</div>
                 @foreach (var e in evsMovil!)
                 {
+                    var colorM = string.IsNullOrWhiteSpace(e.FcColor) ? "#6c757d" : e.FcColor!;
+                    var tipM = $"{e.FcEstadoNombre ?? "Proyectado"} · {e.FcNombre}";
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                         <div>
                             <div>@e.FcNombre</div>
@@ -130,11 +153,12 @@
                         </div>
                         @if (e.FiTicketId.HasValue)
                         {
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="Tickets" asp-action="Detalle" asp-route-id="@e.FiTicketId" style="min-height:40px">@e.FcTicketNumero</a>
+                            <a class="fara-badge text-decoration-none" style="--fara-badge-color:@colorM;min-height:40px"
+                               asp-controller="Tickets" asp-action="Detalle" asp-route-id="@e.FiTicketId" title="@tipM">@e.FcTicketNumero</a>
                         }
                         else
                         {
-                            <span class="badge text-bg-secondary">Proyectado</span>
+                            <span class="fara-badge fara-badge-inactivo" title="@tipM">Proyectado</span>
                         }
                     </div>
                 }
@@ -169,15 +193,12 @@
     </div>
 }
 
+@section Scripts {
 <script>
 document.getElementById('btnGenerar').addEventListener('click', function () {
-    ajaxPost('/Preventivos/GenerarAhora', {}).then(function (resp) {
-        var box = document.getElementById('msgBox');
-        var ok = !!(resp.FbSucces || resp.fbSucces);
-        box.className = 'alert ' + (ok ? 'alert-success' : 'alert-danger');
-        box.textContent = resp.FcMensaje || resp.fcMensaje || 'Listo';
-        box.classList.remove('d-none');
-        if (ok) setTimeout(function () { location.reload(); }, 800);
+    FaraComun.ajaxPost('/Preventivos/GenerarAhora', {}).then(function (resp) {
+        if (resp.FbSucces || resp.fbSucces) setTimeout(function () { location.reload(); }, 800);
     });
 });
 </script>
+}

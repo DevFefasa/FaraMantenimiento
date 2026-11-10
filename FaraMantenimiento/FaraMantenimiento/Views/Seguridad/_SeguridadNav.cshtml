@@ -1,0 +1,14 @@
+@{
+    var tab = (ViewData["SeguridadTab"] as string) ?? "";
+}
+<ul class="nav nav-pills flex-wrap gap-2 mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(tab == "usuarios" ? "active" : "")" asp-action="Index" style="min-height:40px">Usuarios</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(tab == "roles" ? "active" : "")" asp-action="Roles" style="min-height:40px">Roles</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(tab == "pantallas" ? "active" : "")" asp-action="Pantallas" style="min-height:40px">Permisos</a>
+    </li>
+</ul>

@@ -1,21 +1,72 @@
-@*
-  Callers: AlertasSlaViewComponent. Model: int (conteo).
-  Instrucción: «campana con badge rojo con el numero… enlace /Tickets/Bandeja… responsive».
-*@
-@model int
+@* Campana del header: dropdown con las últimas alertas SLA pendientes. *@
+@model FaraMantenimiento.ViewComponents.AlertasSlaVista
 @{
-    var total = Model;
+    var total = Model.Total;
     var etiqueta = total == 1 ? "1 alerta SLA pendiente" : $"{total} alertas SLA pendientes";
+
+    static (string Texto, string Color, string Icono) Tipo(string? t) => (t ?? "").ToUpperInvariant() switch
+    {
+        "POR_VENCER" => ("SLA por vencer", "#d97706", "ti-clock-exclamation"),
+        "VENCIDO_RESPUESTA" => ("Respuesta vencida", "#dc2626", "ti-alarm"),
+        "VENCIDO_SOLUCION" => ("Solución vencida", "#b91c1c", "ti-alert-triangle"),
+        _ => (t ?? "Alerta", "#6c757d", "ti-bell")
+    };
+
+    static string Hace(DateTime fecha)
+    {
+        var d = DateTime.Now - fecha;
+        if (d.TotalMinutes < 1) return "hace un momento";
+        if (d.TotalMinutes < 60) return $"hace {(int)d.TotalMinutes} min";
+        if (d.TotalHours < 24) return $"hace {(int)d.TotalHours} h";
+        if (d.TotalDays < 30) return (int)d.TotalDays == 1 ? "hace 1 día" : $"hace {(int)d.TotalDays} días";
+        return fecha.ToString("dd/MM/yyyy HH:mm");
+    }
 }
-<li class="nav-item">
-    <a class="nav-link fara-alerta-sla position-relative d-inline-flex align-items-center justify-content-center"
-       href="/Tickets/Bandeja"
-       title="@etiqueta"
-       aria-label="@etiqueta">
+<li class="nav-item dropdown">
+    <button type="button" class="nav-link btn btn-link fara-alerta-sla position-relative d-inline-flex align-items-center justify-content-center"
+            id="faraNotifDrop" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false"
+            title="@etiqueta" aria-label="@etiqueta">
         <i class="ti ti-bell fs-6" aria-hidden="true"></i>
         @if (total > 0)
         {
             <span class="fara-alerta-sla-badge">@(total > 99 ? "99+" : total.ToString())</span>
         }
-    </a>
+    </button>
+    <div class="dropdown-menu dropdown-menu-end fara-dropdown" aria-labelledby="faraNotifDrop">
+        <div class="fara-dropdown-cab">
+            <h6>Alertas SLA</h6>
+            @if (total > 0)
+            {
+                <span class="fara-badge" style="--fara-badge-color:#dc2626">@(total == 1 ? "1 nueva" : $"{total} nuevas")</span>
+            }
+        </div>
+        <div class="fara-dropdown-cuerpo">
+            @if (Model.Alertas.Count == 0)
+            {
+                <div class="fara-notif-vacio">
+                    <i class="ti ti-bell-off fs-6 d-block mb-1"></i>
+                    Sin alertas
+                </div>
+            }
+            else
+            {
+                foreach (var a in Model.Alertas)
+                {
+                    var tipo = Tipo(a.FcTipo);
+                    <a class="fara-notif-item" href="/Tickets/Detalle/@a.FiTicketId">
+                        <span class="fara-notif-icono" style="--fara-badge-color:@tipo.Color"><i class="ti @tipo.Icono"></i></span>
+                        <span class="min-w-0">
+                            <span class="fara-notif-titulo d-block">@(a.FcTicketNumero ?? $"Ticket {a.FiTicketId}") · @tipo.Texto</span>
+                            <span class="fara-notif-sub d-block text-truncate">
+                                @Hace(a.FdFecha)@(string.IsNullOrWhiteSpace(a.FcSucursalNombre) ? "" : " · " + a.FcSucursalNombre)
+                            </span>
+                        </span>
+                    </a>
+                }
+            }
+        </div>
+        <div class="fara-dropdown-pie">
+            <a href="/Tickets/Bandeja" class="btn btn-primary w-100">Ver todas</a>
+        </div>
+    </div>
 </li>

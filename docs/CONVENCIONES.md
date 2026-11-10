@@ -97,6 +97,10 @@ DELIMITER ;
   - `55–59` fase 5: plan/calendario preventivo (hecho)
   - `60–64` correcciones de seguridad de docs/REVISION.md (claude2)
   - `65–69` correcciones de flujo/SP de docs/REVISION.md (cursor2)
+  - `70–74` mejoras catálogos y preventivos (cursor1)
+  - `75–79` mejoras seguridad: CRUD roles/pantallas, usuarios, bandeja de correos (cursor2)
+  - `80–84` mejoras layout, notificaciones, tickets (claude2)
+  - `85–89` módulo de correos: bandeja, envío SMTP (claude2)
 - Aplicar local: `docker exec -i MariaLocal sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" faramantenimiento' < db/migrations/NN_x.sql`
 - Script `db/aplicar.sh` aplica todas en orden.
 
@@ -111,7 +115,7 @@ Reglas acordadas con el negocio:
 - Cierre automático: `RESUELTO` sin validar del solicitante pasa a `CERRADO` a los **5 días** (parámetro `DIAS_CIERRE_AUTOMATICO`).
 - Reincidencia: mismo activo + misma categoría en los últimos **N días** (parámetro `DIAS_REINCIDENCIA`, 90).
 - Materiales: texto, cantidad, costo unitario (sin SAP). Moneda LPS (parámetro `MONEDA`).
-- Correos: **pendiente** (se definirá conexión y plantilla después). No implementar envío.
+- Correos: envío real por SMTP desde la bandeja `correopendiente` (ver sección 6).
 
 Roles (`rol.fcCodigo`): `ADMIN, SOLICITANTE, MANTENIMIENTO, JEFATURA, GERENCIA`.
 
@@ -124,10 +128,37 @@ Pantallas/permisos (`fcPantalla`), usados en el menú y en `[RequierePermiso("..
 - **Responsive obligatorio**: probar a 375 px. Tablas con `.table-responsive` o vista de tarjetas en móvil; formularios en una columna en móvil; botones táctiles ≥ 40 px; `<input type="file" accept="image/*,video/*,..." capture>` para fotos en sitio.
 - Textos de UI en español. Fechas `dd/MM/yyyy HH:mm`. Moneda `L 1,234.56`.
 - Controladores por módulo: `AccountController`, `HomeController`, `SeguridadController` (claude2), `TicketsController` (claude2), `CatalogosController` (cursor1), `ReportesController`/`DashboardController` (cursor2).
-- Respuestas AJAX: devolver el mismo objeto estándar `{ fiCodigo, fcMensaje, fbSucces, fjData, datos }` y mostrar `fcMensaje` con SweetAlert.
+- Respuestas AJAX: devolver el mismo objeto estándar `{ fiCodigo, fcMensaje, fbSucces, fjData, datos }` y mostrar con `FaraComun.mostrarMensaje(resp)` (éxito = toast, error = SweetAlert).
+
+### 4.1 Reglas de UI (obligatorias, pedidas por el usuario)
+- **Alertas**: nunca `<div class="alert">` fijos para resultados de acciones. Éxito → `FaraComun.toast(true, msg)`; error → `FaraComun.mostrarMensaje(resp)` (SweetAlert). Tras redirect usar solo `TempData["Exito"]` / `TempData["Error"]` (los pinta `_Alertas` como toast/SweetAlert). `.alert` solo para avisos informativos permanentes.
+- **Crear/editar: modal en computadora, página en teléfono** (`wwwroot/js/fara-modal.js`, `Helpers/ModalExtensions.cs`):
+  - Botón: `<a href="/Modulo/Editar/5" class="btn ..." data-fara-modal data-fara-titulo="Editar X">`. ≥ 992 px abre modal; < 992 px navega a la página.
+  - GET: `return Request.EsModal() ? PartialView("_FormularioX", vm) : View(vm);` (la vista completa hace `<partial name="_FormularioX" />`). El parcial contiene un `<form method="post" asp-action="...">` con antiforgery y botón `type="submit"`; el enlace Cancelar lleva `data-fara-cancelar`.
+  - POST: `if (Request.EsModal()) return Json(respuestaEstandar);` si no, `TempData["Exito"/"Error"]` + `RedirectToAction`. El JS hace toast y recarga al éxito; en error muestra SweetAlert y deja el modal abierto.
+  - Si el parcial necesita JS, escuchar `document.getElementById('faraModal').addEventListener('fara:modal-cargado', ...)`. select2 se inicia solo dentro del modal.
+- **Scripts de página**: siempre dentro de `@section Scripts { }` (se cargan después de jQuery/Bootstrap). Nunca `<script>` suelto en el cuerpo que use `bootstrap`, `$` o `Swal`.
+- **Tablas**: la columna de acciones es la **primera** columna (`<th class="fara-col-accion">Acciones</th>`). Editar = `btn btn-sm btn-outline-primary`; Desactivar = `btn btn-sm btn-outline-danger` (rojo); Activar = `btn btn-sm btn-outline-success`. Mínimo 40 px de alto.
+- **Badges** (estilo transparente, color vivo; definidos en `fara-identidad.css`):
+  - Estado activo/inactivo: `<span class="fara-badge fara-badge-activo">Activo</span>` / `<span class="fara-badge fara-badge-inactivo">Inactivo</span>`.
+  - Color de catálogo (estados de ticket, prioridades): `<span class="fara-badge" style="--fara-badge-color:@color">@nombre</span>` (fondo del color al 15 %, borde y texto del color).
+- **Exportar a Excel**: toda bandeja/listado de tickets tiene botón "Exportar Excel" que respeta los filtros (ClosedXML vía `ExportacionServicio`).
+- **Adjuntos**: siempre Dropzone múltiple (`wwwroot/js/dropzone-adjuntos.js`), nunca `<input type=file>` simple.
 
 ## 5. Seguridad y configuración
 - Sin credenciales en appsettings. Conexión: `ConnectionStrings:FaraMantenimiento` (User Secrets en dev, `ConnectionStrings__FaraMantenimiento` en servidor).
 - Login AD vía API interna (`ActiveDirectory:BaseUrl` = `http://192.168.10.65:7026`, `AppName` = `faramantenimiento`), igual que Fleet. Usuarios locales soportados.
 - Siempre parámetros en SP (nunca concatenar SQL). Antiforgery en todos los POST.
 - Compilar con `dotnet build FaraMantenimiento/FaraMantenimiento.sln` después de cada bloque.
+
+## 6. Correos
+- **Nunca se envía directo**: se encola en `correopendiente` y `Tareas/CorreoTarea` lo envía cada `Smtp:SegundosIntervalo` (reintentos con espera creciente hasta `Smtp:FiMaxIntentos`; el error queda en `fcError`).
+- Código en `FM.Programacion/Servicios/Correo/`: `SmtpOptions`, `SmtpCorreoSender` (SMTP + logo `cid:fefasaLogo` desde `wwwroot/assets/images/FefasaLogo.png`), `CorreoHtml` (piezas del formato institucional), `PlantillaCorreo` (textos por evento), `CorreoServicio` (encolar y enviar). Datos: `CorreoRepositorio` → SP `sp_correo_*` (migraciones 85-86).
+- **Cuerpo siempre cifrado** con Data Protection (propósito `FaraMantenimiento.Correo`): `fcFormato='JSON'` guarda `{html,texto}`; `fcFormato='TEXTO'` (bienvenida de Seguridad) se arma con la plantilla al enviar. No registrar ni imprimir cuerpos ni credenciales.
+- **Configuración**: sección `Smtp` de appsettings; `Smtp:Usuario` y `Smtp:Password` solo en User Secrets / variables `Smtp__Usuario`, `Smtp__Password`. `Smtp:UrlBase` = URL pública (botón "Ver ticket"). En Development todo va a `Smtp:CorreoPruebas`; sin él no se envía nada. `Smtp:Habilitado=false` detiene el envío (se sigue encolando).
+- **Cómo agregar un correo nuevo**:
+  1. Agregar el evento en `EventosCorreo` y su `case` en `PlantillaCorreo.Ticket` (etiqueta, título con `Acento`, intro, asunto y cajas extra), o una plantilla nueva con `CorreoHtml.PlantillaBase`. Siempre con versión de texto plano.
+  2. En `CorreoServicio`, un método `EncolarXxxAsync` que elija los grupos de destinatarios (`SOLICITANTE`, `RESPONSABLE`, `JEFATURA`, `MANTENIMIENTO`, que devuelve `sp_correo_ticket_datos`) y llame a `EncolarTicketAsync`, o a `EncolarAsync(para, correo, tipo, ticketId, usuarioId)` para uno suelto.
+  3. Llamarlo desde el servicio de Programación **después** del SP exitoso (`if (resp.FbSucces) await _correos.EncolarXxxAsync(...)`). Los `Encolar*` no lanzan excepción: si fallan, registran en el log y la operación sigue.
+- Eventos actuales: ticket creado (solicitante + jefatura; emergencia → mantenimiento/ADMIN), asignado (responsable + solicitante), aprobado / rechazado / en espera / resuelto / cerrado (solicitante), alerta SLA (responsable + jefatura; marca `slaalerta.fbCorreoEncolado` para no repetir; `fbNotificado` queda para la campana), cierre automático (solicitante), bienvenida (Seguridad).
+- **Servidor**: las claves de Data Protection deben persistir y ser las mismas entre reinicios (perfil de usuario cargado en IIS o `PersistKeysToFileSystem`); si cambian, los correos pendientes no se pueden descifrar.

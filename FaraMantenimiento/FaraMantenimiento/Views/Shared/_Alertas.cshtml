@@ -16,12 +16,7 @@
             @if (!string.IsNullOrWhiteSpace(exito))
             {
                 <text>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Listo',
-                    text: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(exito)),
-                    confirmButtonText: 'Aceptar'
-                });
+                FaraComun.toast(true, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(exito)));
                 </text>
             }
             @if (!string.IsNullOrWhiteSpace(error))

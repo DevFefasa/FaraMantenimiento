@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using ClosedXML.Excel;
 using FM.OrigenDatos.Modelos.Reportes;
+using FM.OrigenDatos.Modelos.Tickets;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -206,5 +207,33 @@ public class ExportacionServicio
             });
         });
         return doc.GeneratePdf();
+    }
+
+    /// <summary>Listado de tickets (bandejas de TicketsController.Exportar). Respeta los filtros aplicados.</summary>
+    public byte[] ExcelTickets(string titulo, IEnumerable<TicketListaModelo> filas)
+    {
+        static string Sla(string? s) => (s ?? "").ToUpperInvariant() switch
+        {
+            "VERDE" => "En tiempo",
+            "AMARILLO" => "Por vencer",
+            "ROJO" => "Vencido",
+            "GRIS" => "Sin SLA",
+            _ => s ?? ""
+        };
+        static string Fecha(DateTime? f) => f.HasValue ? f.Value.ToString("dd/MM/yyyy HH:mm", Cultura) : "";
+        static string Responsable(TicketListaModelo t) =>
+            !string.IsNullOrWhiteSpace(t.FcTecnicoNombre) ? t.FcTecnicoNombre!
+            : !string.IsNullOrWhiteSpace(t.FcProveedorNombre) ? t.FcProveedorNombre! : "";
+
+        return ExcelTabla(titulo,
+            new[] { "Número", "Fecha ingreso", "Sucursal", "Tipo", "Categoría", "Prioridad", "Estado", "SLA",
+                    "Límite respuesta", "Límite solución", "Solicitante", "Responsable", "Reincidencia", "Descripción" },
+            filas.Select(t => (IReadOnlyList<string>)new[]
+            {
+                t.FcNumero, Fecha(t.FdFechaIngreso), t.FcSucursalNombre ?? "", t.FcTipoNombre ?? "", t.FcCategoriaNombre ?? "",
+                t.FcPrioridadNombre ?? "", t.FcEstadoNombre ?? "", Sla(t.FcSemaforoSla),
+                Fecha(t.FdLimiteRespuesta), Fecha(t.FdLimiteSolucion), t.FcSolicitanteNombre, Responsable(t),
+                t.FbReincidencia ? "Sí" : "No", t.FcDescripcionCorta ?? ""
+            }));
     }
 }

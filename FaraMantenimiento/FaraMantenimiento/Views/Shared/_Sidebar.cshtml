@@ -164,12 +164,32 @@
                 @if (Tiene("SEGURIDAD"))
                 {
                     <li class="sidebar-item">
-                        <a class="sidebar-link primary-hover-bg" href="/Seguridad" aria-expanded="false">
+                        <a class="sidebar-link has-arrow primary-hover-bg" href="javascript:void(0)" aria-expanded="false">
                             <span class="aside-icon p-2 bg-primary-subtle rounded-1">
                                 <i class="ti ti-shield-lock fs-6"></i>
                             </span>
                             <span class="hide-menu ps-1">Seguridad</span>
                         </a>
+                        <ul aria-expanded="false" class="collapse first-level">
+                            <li class="sidebar-item">
+                                <a href="/Seguridad" class="sidebar-link">
+                                    <span class="sidebar-icon"></span>
+                                    <span class="hide-menu">Usuarios</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-item">
+                                <a href="/Seguridad/Roles" class="sidebar-link">
+                                    <span class="sidebar-icon"></span>
+                                    <span class="hide-menu">Roles</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-item">
+                                <a href="/Seguridad/Pantallas" class="sidebar-link">
+                                    <span class="sidebar-icon"></span>
+                                    <span class="hide-menu">Permisos</span>
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                 }
             </ul>

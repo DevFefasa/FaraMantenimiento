@@ -1,0 +1,72 @@
+@model IEnumerable<FM.OrigenDatos.Modelos.Seguridad.PantallaModelo>
+@using FM.Programacion.Constantes
+@{
+    ViewData["Title"] = "Permisos (pantallas)";
+    ViewData["SeguridadTab"] = "pantallas";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h1 class="h4 mb-0">Permisos (pantallas)</h1>
+    <a class="btn btn-primary" asp-action="Pantalla" data-fara-modal data-fara-titulo="Nueva pantalla" style="min-height:40px">Nueva pantalla</a>
+</div>
+<partial name="_SeguridadNav" />
+
+<div class="table-responsive d-none d-md-block">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th class="fara-col-accion">Acciones</th>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Orden</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var p in Model)
+        {
+            var sistema = Pantallas.EsProtegida(p.FcCodigo);
+            <tr>
+                <td class="text-nowrap">
+                    <a class="btn btn-sm btn-outline-primary" asp-action="Pantalla" asp-route-id="@p.FiId"
+                       data-fara-modal data-fara-titulo="Editar pantalla" style="min-height:40px">Editar</a>
+                    <form asp-action="ActivarPantalla" method="post" class="d-inline"
+                          onsubmit="@(sistema && p.FbActivo ? "return confirm('Esta pantalla es del sistema. Desactivarla puede afectar el menú. ¿Continuar?');" : null)">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@p.FiId" />
+                        <input type="hidden" name="activo" value="@(!p.FbActivo)" />
+                        <button type="submit" class="btn btn-sm @(p.FbActivo ? "btn-outline-danger" : "btn-outline-success")" style="min-height:40px">
+                            @(p.FbActivo ? "Desactivar" : "Activar")
+                        </button>
+                    </form>
+                </td>
+                <td>@p.FcCodigo</td>
+                <td>@p.FcNombre</td>
+                <td>@p.FcDescripcion</td>
+                <td>@p.FiOrden</td>
+                <td>
+                    @if (p.FbActivo)
+                    {
+                        <span class="fara-badge fara-badge-activo">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="fara-badge fara-badge-inactivo">Inactivo</span>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<div class="d-md-none d-flex flex-column gap-3">
+@foreach (var p in Model)
+{
+    <div class="border rounded p-3">
+        <div class="fw-semibold">@p.FcNombre</div>
+        <div class="text-muted small mb-2">@p.FcCodigo</div>
+        <a class="btn btn-sm btn-outline-primary" asp-action="Pantalla" asp-route-id="@p.FiId" style="min-height:40px">Editar</a>
+    </div>
+}
+</div>

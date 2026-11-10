@@ -24,6 +24,8 @@ public static class OrigenDatosServiceCollectionExtensions
         services.AddScoped<IEjecutorSp, EjecutorSp>();
         services.AddScoped<IActiveDirectoryApi, ActiveDirectoryApi>();
         services.AddScoped<SeguridadRepositorio>();
+        services.AddScoped<CorreoPendienteRepositorio>();
+        services.AddScoped<CorreoRepositorio>();
         services.AddScoped<AdjuntoRepositorio>();
         services.AddScoped<CatalogoRepositorio>();
         services.AddScoped<TicketRepositorio>();

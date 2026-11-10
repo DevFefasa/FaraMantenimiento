@@ -1,0 +1,6 @@
+@model FM.OrigenDatos.Modelos.Seguridad.RolModelo
+@{
+    ViewData["Title"] = Model.FiId > 0 ? "Editar rol" : "Nuevo rol";
+}
+<h1 class="h4 mb-3">@ViewData["Title"]</h1>
+<partial name="_FormularioRol" model="Model" />

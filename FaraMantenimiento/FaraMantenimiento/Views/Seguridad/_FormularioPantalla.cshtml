@@ -1,0 +1,32 @@
+@model FM.OrigenDatos.Modelos.Seguridad.PantallaModelo
+@{
+    var protegida = ViewBag.EsProtegida is bool b && b;
+}
+<form method="post" asp-action="Pantalla" class="row g-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="fiId" value="@Model.FiId" />
+    <div class="col-12 col-md-6">
+        <label class="form-label">Código</label>
+        <input name="fcCodigo" class="form-control" value="@Model.FcCodigo" required maxlength="50" @(protegida ? "readonly" : null) />
+        @if (protegida)
+        {
+            <div class="form-text">Pantalla del sistema: el código no se puede cambiar.</div>
+        }
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Nombre</label>
+        <input name="fcNombre" class="form-control" value="@Model.FcNombre" required maxlength="100" />
+    </div>
+    <div class="col-12">
+        <label class="form-label">Descripción</label>
+        <input name="fcDescripcion" class="form-control" value="@Model.FcDescripcion" maxlength="250" />
+    </div>
+    <div class="col-12 col-md-4">
+        <label class="form-label">Orden</label>
+        <input name="fiOrden" type="number" class="form-control" value="@Model.FiOrden" />
+    </div>
+    <div class="col-12 d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary" style="min-height:40px">Guardar</button>
+        <a asp-action="Pantallas" class="btn btn-outline-secondary" data-fara-cancelar style="min-height:40px">Cancelar</a>
+    </div>
+</form>

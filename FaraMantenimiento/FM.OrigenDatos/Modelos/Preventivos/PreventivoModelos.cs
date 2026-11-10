@@ -61,6 +61,8 @@ public class PreventivoCalendarioItemModelo
     public string? FcTicketNumero { get; set; }
     public string? FcEstadoCodigo { get; set; }
     public string? FcEstadoNombre { get; set; }
+    /// <summary>Color hex del estado actual del ticket (sp_preventivo_calendario.fcColor). Callers: Calendario.cshtml.</summary>
+    public string? FcColor { get; set; }
     public bool FbProyectado { get; set; }
 }
 
