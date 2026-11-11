@@ -12,6 +12,19 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
+  </ItemGroup>
+  <!-- Callers: SapHanaRepositorio usa Sap.Data.Hana. Confirm: DLL locales lib/hana (copia Fleet). User: "copia el patrón... driver/paquete" -->
+  <ItemGroup>
+    <Reference Include="Sap.Data.Hana.Net.v8.0">
+      <HintPath>lib\hana\Sap.Data.Hana.Net.v8.0.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <None Include="lib\hana\libadonetHDB.dll">
+      <Link>libadonetHDB.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
   </ItemGroup>
 </Project>
 

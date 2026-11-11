@@ -61,7 +61,7 @@ public class ExportacionServicio
                 page.Margin(30);
                 page.Header().Column(col =>
                 {
-                    col.Item().Text("Fara Mantenimiento · FEFASA").FontColor("#1B5E35").SemiBold().FontSize(11);
+                    col.Item().Text("FaraFix · FEFASA").FontColor("#1B5E35").SemiBold().FontSize(11);
                     col.Item().Text(titulo).FontSize(16).SemiBold().FontColor("#1B5E35");
                     if (!string.IsNullOrWhiteSpace(subtitulo))
                         col.Item().Text(subtitulo).FontSize(9).FontColor("#6E6E6E");
@@ -132,7 +132,7 @@ public class ExportacionServicio
                 page.Margin(28);
                 page.Header().Column(col =>
                 {
-                    col.Item().Text("Fara Mantenimiento · FEFASA").FontColor("#1B5E35").SemiBold().FontSize(11);
+                    col.Item().Text("FaraFix · FEFASA").FontColor("#1B5E35").SemiBold().FontSize(11);
                     col.Item().Text("Hoja de vida del activo").FontSize(16).SemiBold().FontColor("#1B5E35");
                     col.Item().Text($"{activo.FcCodigo} — {activo.FcNombre}").FontSize(11);
                     col.Item().Text("Generado: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm", Cultura)).FontSize(8).FontColor("#6E6E6E");

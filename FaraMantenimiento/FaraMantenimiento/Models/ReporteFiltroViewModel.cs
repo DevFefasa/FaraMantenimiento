@@ -19,6 +19,13 @@ public class ReporteFiltroViewModel
     [Display(Name = "Región")]
     public int? FiRegionId { get; set; }
 
+    // Callers: Views/Reportes/_Filtros + Index/Exportar; User instruction: "filtro por Área (y Departamento..."
+    [Display(Name = "Área")]
+    public int? FiAreaId { get; set; }
+
+    [Display(Name = "Departamento")]
+    public int? FiDepartamentoId { get; set; }
+
     [Display(Name = "Tipo")]
     public int? FiTipoMantenimientoId { get; set; }
 
@@ -45,6 +52,8 @@ public class ReporteFiltroViewModel
         FdHasta = FdHasta,
         FiSucursalId = FiSucursalId,
         FiRegionId = FiRegionId,
+        FiAreaId = FiAreaId,
+        FiDepartamentoId = FiDepartamentoId,
         FiTipoMantenimientoId = FiTipoMantenimientoId,
         FiCategoriaId = FiCategoriaId,
         FiPrioridadId = FiPrioridadId,

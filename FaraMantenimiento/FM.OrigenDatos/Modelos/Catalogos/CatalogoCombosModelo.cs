@@ -7,6 +7,7 @@ public class CatalogoItemModelo
     public string FcNombre { get; set; } = "";
     public int? FiRegionId { get; set; }
     public int? FiSucursalId { get; set; }
+    public int? FiAreaId { get; set; }
     public int? FiUbicacionId { get; set; }
     public int? FiCategoriaId { get; set; }
     public string? FcTipo { get; set; }
@@ -36,4 +37,6 @@ public class CatalogoCombosModelo
     public List<CatalogoItemModelo> MotivosEspera { get; set; } = new();
     public List<CatalogoItemModelo> Proveedores { get; set; } = new();
     public List<CatalogoItemModelo> Tecnicos { get; set; } = new();
+    public List<CatalogoItemModelo> Areas { get; set; } = new();
+    public List<CatalogoItemModelo> Departamentos { get; set; } = new();
 }

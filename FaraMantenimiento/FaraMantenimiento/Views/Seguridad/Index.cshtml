@@ -15,8 +15,12 @@
             <tr>
                 <th class="fara-col-accion">Acciones</th>
                 <th>Usuario</th>
+                <th>Usuario AD</th>
                 <th>Nombre</th>
                 <th>Rol</th>
+                <th>Área</th>
+                <th>Departamento</th>
+                <th>Jefe</th>
                 <th>Correo</th>
                 <th>Estado</th>
             </tr>
@@ -38,8 +42,12 @@
                     </form>
                 </td>
                 <td>@u.FcUsuario</td>
+                <td>@u.FcActiveDirectory</td>
                 <td>@u.FcNombre</td>
                 <td>@u.FcRolNombre</td>
+                <td>@u.FcAreaNombre</td>
+                <td>@u.FcDepartamentoNombre</td>
+                <td>@u.FcJefeNombre</td>
                 <td>@u.FcCorreo</td>
                 <td>
                     @if (u.FbActivo)
@@ -62,7 +70,7 @@
 {
     <div class="border rounded p-3">
         <div class="fw-semibold">@u.FcNombre</div>
-        <div class="text-muted small mb-2">@u.FcUsuario · @u.FcRolNombre</div>
+        <div class="text-muted small mb-2">@u.FcUsuario@(string.IsNullOrWhiteSpace(u.FcActiveDirectory) ? "" : " · AD: " + u.FcActiveDirectory) · @u.FcRolNombre@(string.IsNullOrWhiteSpace(u.FcAreaNombre) ? "" : " · " + u.FcAreaNombre)@(string.IsNullOrWhiteSpace(u.FcDepartamentoNombre) ? "" : " / " + u.FcDepartamentoNombre)@(string.IsNullOrWhiteSpace(u.FcJefeNombre) ? "" : " · Jefe: " + u.FcJefeNombre)</div>
         <div class="mb-2">
             @if (u.FbActivo)
             {

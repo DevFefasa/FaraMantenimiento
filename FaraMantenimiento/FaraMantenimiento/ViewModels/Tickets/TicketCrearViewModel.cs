@@ -46,6 +46,8 @@ public class TicketListaViewModel
     public IReadOnlyList<FM.OrigenDatos.Modelos.Tickets.TicketListaModelo> Items { get; set; } = Array.Empty<FM.OrigenDatos.Modelos.Tickets.TicketListaModelo>();
     public string? FjData { get; set; }
     public FM.OrigenDatos.Modelos.Catalogos.CatalogoCombosModelo? Combos { get; set; }
+    /// <summary>Pestañas disponibles con abiertos por pestaña (sp_ticket_vistas_resumen).</summary>
+    public List<FM.OrigenDatos.Modelos.Tickets.TicketVistaResumenModelo> Vistas { get; set; } = new();
 }
 
 public class TicketDetalleViewModel

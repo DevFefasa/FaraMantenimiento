@@ -19,8 +19,15 @@ public class SeguridadController : Controller
 
 {
     private readonly SeguridadServicio _seguridad;
+    private readonly CatalogoServicio _catalogos;
 
-    public SeguridadController(SeguridadServicio seguridad) => _seguridad = seguridad;
+    // Callers: Views/Seguridad/_FormularioUsuario (combos sucursal/área/depto)
+    // User instruction: "campos Sucursal, Área y Departamento en _FormularioUsuario.cshtml"
+    public SeguridadController(SeguridadServicio seguridad, CatalogoServicio catalogos)
+    {
+        _seguridad = seguridad;
+        _catalogos = catalogos;
+    }
 
     private int ActorId => AppAccess.UsuarioId(User) ?? 0;
 
@@ -41,12 +48,18 @@ public class SeguridadController : Controller
         return View(usuarios.Datos);
     }
 
+    // Callers: Views/Seguridad/_FormularioUsuario; menu Seguridad
+    // API: GET/POST /Seguridad/Usuario; ViewBag.UsuariosJefe; form fiJefeId
+    // Schema: usuario.fiJefeId → FcJefeNombre via sp_seguridad_usuario_*
+    // User instruction: "select2 Jefe inmediato (opcional, usuarios activos, sin el propio usuario)"
     [HttpGet]
     public async Task<IActionResult> Usuario(int? id)
     {
         ViewData["Title"] = id is > 0 ? "Editar usuario" : "Nuevo usuario";
         var roles = await _seguridad.ListarRolesAsync();
         ViewBag.Roles = roles.Datos ?? new List<RolModelo>();
+        var (_, combos) = await _catalogos.ObtenerCombosAsync();
+        ViewBag.Combos = combos;
         UsuarioModelo modelo;
         if (id is > 0)
         {
@@ -63,6 +76,12 @@ public class SeguridadController : Controller
             modelo = new UsuarioModelo { FbActivo = true };
         }
 
+        var usuarios = await _seguridad.ListarUsuariosAsync(soloActivos: true);
+        ViewBag.UsuariosJefe = (usuarios.Datos ?? new List<UsuarioModelo>())
+            .Where(x => x.FiId != modelo.FiId)
+            .OrderBy(x => x.FcNombre)
+            .ToList();
+
         if (Request.EsModal())
             return PartialView("_FormularioUsuario", modelo);
         return View(modelo);
@@ -70,11 +89,11 @@ public class SeguridadController : Controller
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Usuario(
-        int? fiId, string fcUsuario, string fcNombre, string? fcCorreo, string? fcTelefono,
-        int fiRolId, int? fiSucursalId, string? contrasenaNueva)
+        int? fiId, string fcUsuario, string? fcActiveDirectory, string fcNombre, string? fcCorreo, string? fcTelefono,
+        int fiRolId, int? fiSucursalId, int? fiAreaId, int? fiDepartamentoId, int? fiJefeId, string? contrasenaNueva)
     {
         var resp = await _seguridad.GuardarUsuarioAsync(
-            fiId, fcUsuario, fcNombre, fcCorreo, fcTelefono, fiRolId, fiSucursalId, contrasenaNueva, ActorId);
+            fiId, fcUsuario, fcActiveDirectory, fcNombre, fcCorreo, fcTelefono, fiRolId, fiSucursalId, fiAreaId, fiDepartamentoId, fiJefeId, contrasenaNueva, ActorId);
         if (!resp.FbSucces && !Request.EsModal())
         {
             TempData["Error"] = resp.FcMensaje;

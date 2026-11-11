@@ -51,14 +51,23 @@ public class TicketServicio
     private static bool EsJefatura(string? rol) => string.Equals(rol, Roles.Jefatura, StringComparison.OrdinalIgnoreCase) || EsAdmin(rol);
     private static bool EsSolicitante(string? rol) => string.Equals(rol, Roles.Solicitante, StringComparison.OrdinalIgnoreCase);
 
-    public async Task<RespuestaSp<TicketListaModelo>> ListarAsync(TicketFiltro filtro, int fiUsuarioId, string? rolCodigo, CancellationToken ct = default)
+    /// <summary>Pestañas de la pantalla Tickets disponibles para el usuario, con abiertos por pestaña.</summary>
+    public async Task<List<TicketVistaResumenModelo>> VistasAsync(int fiUsuarioId, CancellationToken ct = default)
     {
-        if (!await PuedeVerTodosAsync(fiUsuarioId, ct))
-            filtro.FiSolicitanteId = fiUsuarioId;
+        var resp = await _tickets.VistasResumenAsync(fiUsuarioId, ct);
+        return resp.FbSucces ? resp.Datos.ToList() : new List<TicketVistaResumenModelo>();
+    }
 
+    /// <summary>
+    /// Listado de una vista (creados, asignados, equipo, aprobar, atender, todos).
+    /// El SP filtra por vista y valida el permiso (403 si no lo tiene).
+    /// </summary>
+    public async Task<RespuestaSp<TicketListaModelo>> ListarAsync(string vista, TicketFiltro filtro, int fiUsuarioId, CancellationToken ct = default)
+    {
         var param = new
         {
-            p_fiSolicitanteId = filtro.FiSolicitanteId,
+            p_fcVista = vista,
+            p_fiUsuarioId = fiUsuarioId,
             p_fiEstadoId = filtro.FiEstadoId,
             p_fcEstadoCodigo = filtro.FcEstadoCodigo,
             p_fiSucursalId = filtro.FiSucursalId,
@@ -75,7 +84,7 @@ public class TicketServicio
             p_fiPagina = filtro.FiPagina,
             p_fiTamano = filtro.FiTamano
         };
-        return await _tickets.ListarAsync(param, ct);
+        return await _tickets.ListarVistaAsync(param, ct);
     }
 
     /// <summary>
@@ -83,7 +92,7 @@ public class TicketServicio
     /// así que se recorren páginas hasta un tope de seguridad.
     /// </summary>
     public async Task<(RespuestaSp Cabecera, List<TicketListaModelo> Filas)> ListarParaExportarAsync(
-        TicketFiltro filtro, int fiUsuarioId, string? rolCodigo, int maxFilas = 10_000, CancellationToken ct = default)
+        string vista, TicketFiltro filtro, int fiUsuarioId, int maxFilas = 10_000, CancellationToken ct = default)
     {
         const int tam = 200;
         var filas = new List<TicketListaModelo>();
@@ -92,7 +101,7 @@ public class TicketServicio
         {
             filtro.FiPagina = pagina;
             filtro.FiTamano = tam;
-            var resp = await ListarAsync(filtro, fiUsuarioId, rolCodigo, ct);
+            var resp = await ListarAsync(vista, filtro, fiUsuarioId, ct);
             if (!resp.FbSucces) return (resp, filas);
             var lote = resp.Datos.ToList();
             filas.AddRange(lote);
@@ -109,13 +118,16 @@ public class TicketServicio
         if (!det.Cabecera.FbSucces || det.Ticket == null) return (det, acciones);
 
         var t = det.Ticket;
-        var verTodos = await PuedeVerTodosAsync(fiUsuarioId, ct);
-        if (!verTodos && t.FiSolicitanteId != fiUsuarioId)
+        // Visibilidad (fn_ticket_puede_ver): permisos de bandeja/aprobación/todos, ADMIN, solicitante,
+        // técnico ligado al usuario o solicitante subordinado (usuario.fiJefeId).
+        var puede = await _tickets.PuedeVerAsync(fiTicketId, fiUsuarioId, ct);
+        if (!puede.FbSucces)
         {
-            det.Cabecera = Prohibido("No tiene permiso para ver este ticket");
+            det.Cabecera = puede.FiCodigo == 404 ? puede : Prohibido("No tiene permiso para ver este ticket");
             det.Ticket = null;
             return (det, acciones);
         }
+        var verTodos = await PuedeVerTodosAsync(fiUsuarioId, ct);
 
         // Comentarios internos: solo para el personal (quien ve tickets de otros).
         if (!verTodos)
@@ -217,12 +229,15 @@ public class TicketServicio
         return resp;
     }
 
-    public async Task<RespuestaSp> AsignarAsync(int fiTicketId, string tipo, int? tecnicoId, int? proveedorId, DateTime? programada, int fiUsuarioId, string? rol, CancellationToken ct = default)
+    // Callers: TicketsController.Asignar. API: Asignar con proveedor SAP. Schema: mig 92.
+    // User: "en la asignación a proveedor externo se busca el proveedor SAP y se guarda código + nombre"
+    public async Task<RespuestaSp> AsignarAsync(int fiTicketId, string tipo, int? tecnicoId, int? proveedorId,
+        string? proveedorSapCodigo, string? proveedorSapNombre, DateTime? programada, int fiUsuarioId, string? rol, CancellationToken ct = default)
     {
         var (det, acciones) = await ObtenerAsync(fiTicketId, fiUsuarioId, rol, ct);
         if (!det.Cabecera.FbSucces) return det.Cabecera;
         if (!acciones.PuedeAsignar) return new RespuestaSp { FiCodigo = 403, FcMensaje = "No tiene permiso para asignar", FbSucces = false };
-        var resp = await _tickets.AsignarAsync(fiTicketId, tipo, tecnicoId, proveedorId, programada, fiUsuarioId, ct);
+        var resp = await _tickets.AsignarAsync(fiTicketId, tipo, tecnicoId, proveedorId, proveedorSapCodigo, proveedorSapNombre, programada, fiUsuarioId, ct);
         if (resp.FbSucces)
             await _correos.EncolarTicketAsignadoAsync(fiTicketId, fiUsuarioId);
         return resp;
@@ -246,12 +261,12 @@ public class TicketServicio
         return await _tickets.GuardarEjecucionAsync(fiTicketId, inicio, fin, horas, manoObra, proveedor, diagnostico, causa, trabajo, preventivas, fiUsuarioId, ct);
     }
 
-    public async Task<RespuestaSp> GuardarMaterialAsync(int? fiId, int fiTicketId, string desc, decimal cant, string? unidad, decimal costo, int fiUsuarioId, string? rol, CancellationToken ct = default)
+    public async Task<RespuestaSp> GuardarMaterialAsync(int? fiId, int fiTicketId, string desc, decimal cant, string? unidad, decimal costo, string? codigoSap, int fiUsuarioId, string? rol, CancellationToken ct = default)
     {
         var (det, acciones) = await ObtenerAsync(fiTicketId, fiUsuarioId, rol, ct);
         if (!det.Cabecera.FbSucces) return det.Cabecera;
         if (!acciones.PuedeMateriales) return new RespuestaSp { FiCodigo = 403, FcMensaje = "No tiene permiso para materiales", FbSucces = false };
-        return await _tickets.GuardarMaterialAsync(fiId, fiTicketId, desc, cant, unidad, costo, fiUsuarioId, ct);
+        return await _tickets.GuardarMaterialAsync(fiId, fiTicketId, desc, cant, unidad, costo, codigoSap, fiUsuarioId, ct);
     }
 
     public async Task<RespuestaSp> EliminarMaterialAsync(int fiId, int fiTicketId, int fiUsuarioId, string? rol, CancellationToken ct = default)
@@ -262,8 +277,16 @@ public class TicketServicio
         return await _tickets.EliminarMaterialAsync(fiId, fiUsuarioId, ct);
     }
 
-    public Task<RespuestaSp> GuardarEncuestaAsync(int fiTicketId, int calificacion, bool conforme, string? comentario, int fiUsuarioId, CancellationToken ct = default) =>
-        _tickets.GuardarEncuestaAsync(fiTicketId, calificacion, conforme, comentario, fiUsuarioId, ct);
+    /// <summary>
+    /// Validación del solicitante (encuesta): conforme → VALIDADO; no conforme → EN_PROCESO y el comentario es obligatorio
+    /// para que mantenimiento sepa qué sigue fallando.
+    /// </summary>
+    public Task<RespuestaSp> GuardarEncuestaAsync(int fiTicketId, int calificacion, bool conforme, string? comentario, int fiUsuarioId, CancellationToken ct = default)
+    {
+        if (!conforme && string.IsNullOrWhiteSpace(comentario))
+            return Task.FromResult(new RespuestaSp { FiCodigo = 400, FcMensaje = "Escriba qué sigue fallando para que mantenimiento lo revise", FbSucces = false });
+        return _tickets.GuardarEncuestaAsync(fiTicketId, calificacion, conforme, comentario, fiUsuarioId, ct);
+    }
 
     public async Task<RespuestaSp> AgregarComentarioAsync(int fiTicketId, string comentario, bool interno, int fiUsuarioId, string? rol, CancellationToken ct = default)
     {
@@ -273,6 +296,25 @@ public class TicketServicio
         // Solo el personal puede dejar comentarios internos.
         if (interno && !await PuedeVerTodosAsync(fiUsuarioId, ct)) interno = false;
         return await _tickets.AgregarComentarioAsync(fiTicketId, comentario, interno, fiUsuarioId, ct);
+    }
+
+    // ===== Recordatorio diario de SLA vencido (migración 93) =====
+
+    /// <summary>Quién puede apagar/encender el recordatorio: ADMIN, JEFATURA y MANTENIMIENTO (el SP lo valida también).</summary>
+    public static bool PuedeCambiarRecordatorioSla(string? rol) => EsMant(rol) || EsJefatura(rol);
+
+    public async Task<TicketRecordatorioSlaModelo?> ObtenerRecordatorioSlaAsync(int fiTicketId, CancellationToken ct = default)
+    {
+        var resp = await _tickets.RecordatorioSlaObtenerAsync(fiTicketId, ct);
+        return resp.FbSucces ? resp.Datos.FirstOrDefault() : null;
+    }
+
+    public async Task<RespuestaSp> CambiarRecordatorioSlaAsync(int fiTicketId, bool sinRecordatorio, int fiUsuarioId, string? rol, CancellationToken ct = default)
+    {
+        var (det, _) = await ObtenerAsync(fiTicketId, fiUsuarioId, rol, ct);
+        if (!det.Cabecera.FbSucces || det.Ticket == null) return det.Cabecera;
+        if (!PuedeCambiarRecordatorioSla(rol)) return Prohibido("No tiene permiso para cambiar los recordatorios de SLA");
+        return await _tickets.RecordatorioSlaCambiarAsync(fiTicketId, sinRecordatorio, fiUsuarioId, ct);
     }
 
     // ===== Adjuntos del ticket (con control de acceso) =====

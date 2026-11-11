@@ -16,6 +16,9 @@ public class ReporteRepositorio
         p_fiSucursalId = f.FiSucursalId,
         p_fiRegionId = f.FiRegionId,
         p_fiTipoMantenimientoId = f.FiTipoMantenimientoId,
+        // User instruction: filtro Área/Departamento en reportes/exportación
+        p_fiAreaId = f.FiAreaId,
+        p_fiDepartamentoId = f.FiDepartamentoId,
         p_fiCategoriaId = f.FiCategoriaId,
         p_fiPrioridadId = f.FiPrioridadId,
         p_fiEstadoId = f.FiEstadoId,

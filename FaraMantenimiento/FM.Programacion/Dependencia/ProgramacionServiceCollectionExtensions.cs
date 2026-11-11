@@ -27,6 +27,9 @@ public static class ProgramacionServiceCollectionExtensions
         services.AddScoped<ReporteServicio>();
         services.AddScoped<ExportacionServicio>();
         services.AddScoped<PreventivoServicio>();
+        // Callers: TicketsController. API: DI SapServicio. Schema: N/A (usa SapHanaRepositorio).
+        // Confirm: SapHanaRepositorio registrado en OrigenDatos. User: "FM.Programacion servicio"
+        services.AddScoped<SapServicio>();
         services.AddHostedService<PreventivoTarea>();
         services.AddHostedService<SlaTarea>();
         services.AddHostedService<CorreoTarea>();

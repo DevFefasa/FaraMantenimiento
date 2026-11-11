@@ -28,6 +28,10 @@ public class TicketListaModelo
     public int? FiTecnicoId { get; set; }
     public string? FcTecnicoNombre { get; set; }
     public int? FiProveedorId { get; set; }
+    // Callers: sp_ticket_obtener / Detalle. Schema: ticket.fcProveedorSap* (mig 91).
+    // User: "se guarda código + nombre" del proveedor SAP
+    public string? FcProveedorSapCodigo { get; set; }
+    public string? FcProveedorSapNombre { get; set; }
     public string? FcProveedorNombre { get; set; }
     public bool FbReincidencia { get; set; }
     public DateTime? FdLimiteRespuesta { get; set; }
@@ -44,6 +48,10 @@ public class TicketDetalleModelo : TicketListaModelo
     public string? FcCorreo { get; set; }
     public string? FcTelefono { get; set; }
     public string? FcSucursalCodigo { get; set; }
+    public int? FiAreaId { get; set; }
+    public string? FcAreaNombre { get; set; }
+    public int? FiDepartamentoId { get; set; }
+    public string? FcDepartamentoNombre { get; set; }
     public int? FiUbicacionId { get; set; }
     public string? FcUbicacionNombre { get; set; }
     public string? FcUbicacionDetalle { get; set; }
@@ -107,6 +115,7 @@ public class TicketMaterialModelo
 {
     public int FiId { get; set; }
     public int FiTicketId { get; set; }
+    public string? FcCodigoSap { get; set; }
     public string FcDescripcion { get; set; } = "";
     public decimal FnCantidad { get; set; }
     public string? FcUnidad { get; set; }

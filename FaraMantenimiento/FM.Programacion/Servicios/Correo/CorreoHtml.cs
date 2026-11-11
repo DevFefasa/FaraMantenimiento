@@ -50,7 +50,7 @@ public static class CorreoHtml
               <img src=""cid:{LogoContentId}"" alt=""FEFASA"" width=""180""
                    style=""display:block;max-width:180px;height:auto;border:0;"" />
               <div style=""margin-top:10px;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:{Verde};"">MANTENIMIENTO</div>
-              <div style=""margin-top:2px;font-size:12px;color:{Gris};"">Fara Mantenimiento FEFASA</div>
+              <div style=""margin-top:2px;font-size:12px;color:{Gris};"">FaraFix · FEFASA</div>
             </td>
           </tr>
           <tr>

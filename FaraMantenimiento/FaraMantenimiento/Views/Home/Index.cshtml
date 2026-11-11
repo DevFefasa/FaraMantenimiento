@@ -6,7 +6,7 @@
 }
 <div class="mb-4">
     <h1 class="h3 mb-1">Bienvenido, @nombre</h1>
-    <p class="text-muted mb-0">Fara Mantenimiento · Ferretería Faraj (FEFASA)</p>
+    <p class="text-muted mb-0">FaraFix · Ferretería Faraj (FEFASA)</p>
 </div>
 
 <div class="row g-3">
@@ -16,34 +16,10 @@
         <a class="fara-acceso" href="/Dashboard"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span><small class="text-muted">Indicadores y SLA</small></a>
     </div>
 }
-@if (Tiene("TICKET_CREAR"))
+@if (User.Claims.Any(c => c.Type == "permiso" && c.Value.StartsWith("TICKET_")))
 {
     <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
-        <a class="fara-acceso" href="/Tickets/Crear"><i class="ti ti-plus"></i><span>Nuevo ticket</span><small class="text-muted">Crear solicitud de mantenimiento</small></a>
-    </div>
-}
-@if (Tiene("TICKET_MIOS"))
-{
-    <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
-        <a class="fara-acceso" href="/Tickets/Mios"><i class="ti ti-clipboard-list"></i><span>Mis tickets</span><small class="text-muted">Seguimiento de mis solicitudes</small></a>
-    </div>
-}
-@if (Tiene("TICKET_BANDEJA"))
-{
-    <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
-        <a class="fara-acceso" href="/Tickets/Bandeja"><i class="ti ti-inbox"></i><span>Bandeja mantenimiento</span><small class="text-muted">Tickets por atender</small></a>
-    </div>
-}
-@if (Tiene("TICKET_APROBACION"))
-{
-    <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
-        <a class="fara-acceso" href="/Tickets/Aprobacion"><i class="ti ti-checkbox"></i><span>Aprobaciones</span><small class="text-muted">Pendientes de jefatura</small></a>
-    </div>
-}
-@if (Tiene("TICKET_TODOS"))
-{
-    <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
-        <a class="fara-acceso" href="/Tickets"><i class="ti ti-list-details"></i><span>Todos los tickets</span><small class="text-muted">Consulta general</small></a>
+        <a class="fara-acceso" href="/Tickets"><i class="ti ti-ticket"></i><span>Tickets</span><small class="text-muted">Creados, asignados, por aprobar y por atender</small></a>
     </div>
 }
 @if (Tiene("CATALOGOS"))

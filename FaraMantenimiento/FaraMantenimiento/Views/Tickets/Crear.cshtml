@@ -82,7 +82,7 @@
     </div>
     <div class="col-12 d-flex flex-wrap gap-2">
         <button type="submit" class="btn btn-primary" style="min-height:40px">Crear ticket</button>
-        <a asp-action="Mios" class="btn btn-outline-secondary" style="min-height:40px">Cancelar</a>
+        <a asp-action="Index" class="btn btn-outline-secondary" style="min-height:40px">Cancelar</a>
     </div>
 </form>
 
@@ -90,17 +90,26 @@
 <script>
 (function () {
     var ubicaciones = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(combos.Ubicaciones.Select(u => new { u.FiId, u.FcNombre, u.FiSucursalId })));
-    var activos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(combos.Activos.Select(a => new { a.FiId, a.FcNombre, a.FiSucursalId })));
+    var activos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(combos.Activos.Select(a => new { a.FiId, a.FcNombre, a.FiSucursalId, a.FiUbicacionId })));
+    // Las propiedades llegan en PascalCase (FiId, FcNombre, FiSucursalId), igual que en Preventivos.
     function fill(sel, items, placeholder) {
         var $s = $(sel).empty().append($('<option/>').val('').text(placeholder || '(Opcional)'));
-        items.forEach(function (i) { $s.append($('<option/>').val(i.fiId).text(i.fcNombre)); });
+        items.forEach(function (i) { $s.append($('<option/>').val(i.FiId).text(i.FcNombre)); });
         $s.trigger('change');
+    }
+    function llenarActivos() {
+        var suc = parseInt($('#selSucursal').val() || '0', 10);
+        var ubi = parseInt($('#selUbicacion').val() || '0', 10);
+        fill('#selActivo', activos.filter(function (x) {
+            return x.FiSucursalId === suc && (!ubi || !x.FiUbicacionId || x.FiUbicacionId === ubi);
+        }));
     }
     $('#selSucursal').on('change', function () {
         var id = parseInt(this.value || '0', 10);
-        fill('#selUbicacion', ubicaciones.filter(function (x) { return x.fiSucursalId === id; }));
-        fill('#selActivo', activos.filter(function (x) { return x.fiSucursalId === id; }));
+        fill('#selUbicacion', ubicaciones.filter(function (x) { return x.FiSucursalId === id; }));
+        llenarActivos();
     }).trigger('change');
+    $('#selUbicacion').on('change', llenarActivos);
     function syncFecha() {
         var req = $('#selTipo option:selected').data('fecha') === true || $('#selTipo option:selected').data('fecha') === 'true';
         $('#wrapFechaSugerida').toggle(!!req);

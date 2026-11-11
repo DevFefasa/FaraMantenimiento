@@ -9,6 +9,20 @@
     static string ColorSeguro(string? c) =>
         !string.IsNullOrWhiteSpace(c) && System.Text.RegularExpressions.Regex.IsMatch(c, "^#[0-9a-fA-F]{3,8}$") ? c : "#6c757d";
     var puedeEvidencia = ViewBag.PuedeEvidencia is true;
+    // La ejecución es un solo resumen por ticket: "Registrar" si está vacío, "Editar" si ya tiene datos.
+    var tieneEjecucion = t.FdFechaInicio.HasValue || t.FdFechaFin.HasValue || t.FnHorasTrabajadas.HasValue
+        || (t.FnCostoManoObra ?? 0) != 0 || (t.FnCostoProveedor ?? 0) != 0
+        || !string.IsNullOrWhiteSpace(t.FcDiagnostico) || !string.IsNullOrWhiteSpace(t.FcCausaRaiz)
+        || !string.IsNullOrWhiteSpace(t.FcTrabajoRealizado) || !string.IsNullOrWhiteSpace(t.FcAccionesPreventivas);
+    var esResuelto = string.Equals(t.FcEstadoCodigo, "RESUELTO", StringComparison.OrdinalIgnoreCase);
+    var diasCierre = ViewBag.DiasCierreAutomatico as int?;
+    // Si ya se midió el SLA (respuesta/solución), se indica si se cumplió.
+    static Microsoft.AspNetCore.Html.IHtmlContent SlaCumplido(bool? cumplido) => cumplido switch
+    {
+        true => new Microsoft.AspNetCore.Html.HtmlString("<span class=\"fara-badge\" style=\"--fara-badge-color:#16a34a\">Cumplido</span>"),
+        false => new Microsoft.AspNetCore.Html.HtmlString("<span class=\"fara-badge\" style=\"--fara-badge-color:#dc2626\">No cumplido</span>"),
+        _ => Microsoft.AspNetCore.Html.HtmlString.Empty
+    };
 }
 @Html.AntiForgeryToken()
 
@@ -43,20 +57,29 @@
             <div class="row g-2 small">
                 <div class="col-6 col-md-4"><strong>Ingreso</strong><div>@t.FdFechaIngreso.ToString("dd/MM/yyyy HH:mm")</div></div>
                 <div class="col-6 col-md-4"><strong>Solicitante</strong><div>@t.FcSolicitanteNombre</div></div>
+                <div class="col-6 col-md-4"><strong>Cargo</strong><div>@(string.IsNullOrWhiteSpace(t.FcCargo) ? "—" : t.FcCargo)</div></div>
+                <div class="col-6 col-md-4"><strong>Correo</strong><div class="text-break">@if (string.IsNullOrWhiteSpace(t.FcCorreo)) { <span>—</span> } else { <a href="mailto:@t.FcCorreo">@t.FcCorreo</a> }</div></div>
+                <div class="col-6 col-md-4"><strong>Teléfono</strong><div>@(string.IsNullOrWhiteSpace(t.FcTelefono) ? "—" : t.FcTelefono)</div></div>
                 <div class="col-6 col-md-4"><strong>Sucursal</strong><div>@t.FcSucursalNombre</div></div>
+                <div class="col-6 col-md-4"><strong>Área / Departamento</strong><div>@(t.FcAreaNombre ?? "—") / @(t.FcDepartamentoNombre ?? "—")</div></div>
                 <div class="col-6 col-md-4"><strong>Ubicación</strong><div>@(t.FcUbicacionNombre ?? t.FcUbicacionDetalle ?? "—")</div></div>
                 <div class="col-6 col-md-4"><strong>Activo</strong><div>@(t.FcActivoNombre ?? "—")</div></div>
                 <div class="col-6 col-md-4"><strong>Tipo</strong><div>@t.FcTipoNombre</div></div>
                 <div class="col-6 col-md-4"><strong>Categoría</strong><div>@t.FcCategoriaNombre</div></div>
-                <div class="col-6 col-md-4"><strong>Límite respuesta</strong><div>@(t.FdLimiteRespuesta?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div></div>
-                <div class="col-6 col-md-4"><strong>Límite solución</strong><div>@(t.FdLimiteSolucion?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div></div>
-                <div class="col-6 col-md-4"><strong>Responsable</strong><div>@(t.FcTipoResponsable == "INTERNO" ? t.FcTecnicoNombre : t.FcProveedorNombre) @(t.FcTipoResponsable)</div></div>
+                @if (t.FdFechaSugerida.HasValue)
+                {
+                    <div class="col-6 col-md-4"><strong>Fecha sugerida</strong><div>@t.FdFechaSugerida.Value.ToString("dd/MM/yyyy HH:mm")</div></div>
+                }
+                <div class="col-6 col-md-4"><strong>Límite respuesta</strong><div>@(t.FdLimiteRespuesta?.ToString("dd/MM/yyyy HH:mm") ?? "—") @SlaCumplido(t.FbSlaRespuestaCumplido)</div></div>
+                <div class="col-6 col-md-4"><strong>Límite solución</strong><div>@(t.FdLimiteSolucion?.ToString("dd/MM/yyyy HH:mm") ?? "—") @SlaCumplido(t.FbSlaSolucionCumplido)</div></div>
+                <div class="col-6 col-md-4"><strong>Responsable</strong><div>@if (string.IsNullOrWhiteSpace(t.FcTipoResponsable)) { <span class="text-muted">Sin asignar</span> } else { @(t.FcTipoResponsable == "INTERNO" ? t.FcTecnicoNombre : t.FcProveedorNombre) <small class="text-muted">(@(t.FcTipoResponsable == "INTERNO" ? "Técnico interno" : "Proveedor externo"))</small> }</div></div>
             </div>
         </div>
 
         <div class="border rounded p-3 mb-3">
             <h2 class="h6">Ejecución y costos</h2>
             <div class="row g-2 small mb-2">
+                <div class="col-6 col-md-3"><strong>Programada</strong><div>@(t.FdFechaProgramada?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div></div>
                 <div class="col-6 col-md-3"><strong>Inicio</strong><div>@(t.FdFechaInicio?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div></div>
                 <div class="col-6 col-md-3"><strong>Fin</strong><div>@(t.FdFechaFin?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div></div>
                 <div class="col-6 col-md-3"><strong>Horas</strong><div>@(t.FnHorasTrabajadas?.ToString("N2") ?? "—")</div></div>
@@ -73,24 +96,30 @@
             }
         </div>
 
+        @*
+          Callers: Tickets/Detalle. API: tabla materiales + fcCodigoSap. Schema: ticketmaterial (mig 91).
+          Confirm: claude2 toca otras secciones; solo materiales/proveedor aquí.
+          User instruction: "Puedes editar Views/Tickets/Detalle.cshtml SOLO en las secciones de materiales y de proveedor"
+        *@
         <div class="border rounded p-3 mb-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h2 class="h6 mb-0">Materiales</h2>
             </div>
             <div class="table-responsive">
                 <table class="table table-sm fara-tabla-movil">
-                    <thead><tr><th>Descripción</th><th>Cant.</th><th>Costo</th><th>Total</th></tr></thead>
+                    <thead><tr><th>SAP</th><th>Descripción</th><th>Cant.</th><th>Costo</th><th>Total</th></tr></thead>
                     <tbody>
                     @foreach (var m in Model.Materiales)
                     {
                         <tr>
+                            <td data-label="SAP">@(m.FcCodigoSap ?? "—")</td>
                             <td data-label="Descripción">@m.FcDescripcion</td>
                             <td data-label="Cant.">@m.FnCantidad @m.FcUnidad</td>
                             <td data-label="Costo">@Lps(m.FnCostoUnitario)</td>
                             <td data-label="Total">@Lps(m.FnTotal)</td>
                         </tr>
                     }
-                    @if (!Model.Materiales.Any()) { <tr><td colspan="4" class="text-muted">Sin materiales</td></tr> }
+                    @if (!Model.Materiales.Any()) { <tr><td colspan="5" class="text-muted">Sin materiales</td></tr> }
                     </tbody>
                 </table>
             </div>
@@ -150,38 +179,57 @@
             }
         </div>
 
-        @if (a.PuedeEncuesta && Model.Encuesta == null)
+        @* RESUELTO: el solicitante valida el trabajo (mismo SP de encuesta: conforme → VALIDADO; no conforme → EN_PROCESO). *@
+        @if (a.PuedeEncuesta)
         {
-            <div class="border rounded p-3 mb-3 border-success">
-                <h2 class="h6">Encuesta de satisfacción</h2>
-                <form id="formEncuesta" class="row g-2">
-                    <div class="col-12">
-                        <label class="form-label">Calificación (1-5)</label>
-                        <div class="d-flex gap-2 flex-wrap" id="estrellas">
+            <div class="border rounded p-3 mb-3 border-success fara-validar" id="cardValidar">
+                <h2 class="h5 mb-1">Validar trabajo</h2>
+                <p class="mb-3">Mantenimiento marcó el ticket como resuelto. ¿Quedó solucionado?</p>
+                <form id="formEncuesta" class="m-0">
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-sm-6">
+                            <input type="radio" class="btn-check" name="conforme" id="conformeSi" value="true" autocomplete="off" />
+                            <label class="btn btn-outline-success w-100 fara-btn-validar" for="conformeSi"><i class="ti ti-circle-check fs-5 me-1"></i>Sí, quedó bien</label>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <input type="radio" class="btn-check" name="conforme" id="conformeNo" value="false" autocomplete="off" />
+                            <label class="btn btn-outline-danger w-100 fara-btn-validar" for="conformeNo"><i class="ti ti-circle-x fs-5 me-1"></i>No, sigue el problema</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <span class="form-label d-block" id="lblEstrellas">Califique la atención (1 a 5)</span>
+                        <div class="d-flex gap-1 flex-wrap" id="estrellas" role="radiogroup" aria-labelledby="lblEstrellas">
                             @for (var i = 1; i <= 5; i++)
                             {
-                                <button type="button" class="btn btn-outline-warning btn-estrella" data-val="@i" style="min-height:40px;min-width:40px">★</button>
+                                <button type="button" class="fara-estrella btn-estrella" data-val="@i" role="radio" aria-checked="false" aria-label="@i de 5">★</button>
                             }
+                            <span class="ms-2 align-self-center small text-muted" id="txtEstrellas"></span>
                         </div>
-                        <input type="hidden" name="calificacion" id="calificacion" value="5" />
+                        <input type="hidden" name="calificacion" id="calificacion" value="0" />
                     </div>
-                    <div class="col-12">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="conforme" id="conforme" value="true" checked />
-                            <label class="form-check-label" for="conforme">Conforme con el servicio</label>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="txtValidar" id="lblComentarioValidar">Comentario (opcional)</label>
+                        <textarea name="comentario" id="txtValidar" class="form-control" rows="2" placeholder="Cuéntenos cómo quedó el trabajo"></textarea>
                     </div>
-                    <div class="col-12">
-                        <textarea name="comentario" class="form-control" rows="2" placeholder="Comentario (opcional)"></textarea>
-                    </div>
-                    <div class="col-12"><button class="btn btn-success" style="min-height:40px">Enviar encuesta</button></div>
+                    <button class="btn btn-success" id="btnValidar" style="min-height:44px">Enviar</button>
                 </form>
+                @if (diasCierre is > 0)
+                {
+                    <p class="small text-muted mb-0 mt-3"><i class="ti ti-clock me-1"></i>Si no responde en @diasCierre día@(diasCierre == 1 ? "" : "s"), el ticket se cierra solo.</p>
+                }
             </div>
         }
-        else if (Model.Encuesta != null)
+        else if (esResuelto)
+        {
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="status">
+                <i class="ti ti-hourglass fs-5"></i>
+                <span>Esperando validación del solicitante.@(diasCierre is > 0 ? $" Si no responde en {diasCierre} día{(diasCierre == 1 ? "" : "s")}, el ticket se cierra solo." : "")</span>
+            </div>
+        }
+        @if (!a.PuedeEncuesta && Model.Encuesta != null)
         {
             <div class="border rounded p-3 mb-3">
-                <h2 class="h6">Encuesta</h2>
+                <h2 class="h6">Validación del solicitante</h2>
                 <p class="mb-0">Calificación: @Model.Encuesta.FiCalificacion / 5 · @(Model.Encuesta.FbConforme ? "Conforme" : "No conforme")</p>
                 <p class="small text-muted mb-0">@Model.Encuesta.FcComentario</p>
             </div>
@@ -200,22 +248,36 @@
                 @if (a.PuedeIniciar) { <button type="button" class="btn btn-primary js-estado" data-estado="EN_PROCESO" style="min-height:40px">Iniciar trabajo</button> }
                 @if (a.PuedePonerEspera) { <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalEspera" style="min-height:40px">Poner en espera</button> }
                 @if (a.PuedeSalirEspera) { <button type="button" class="btn btn-outline-primary js-estado" data-estado="EN_PROCESO" style="min-height:40px">Salir de espera</button> }
-                @if (a.PuedeEjecucion) { <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEjecucion" style="min-height:40px">Registrar ejecución</button> }
+                @if (a.PuedeEjecucion) { <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEjecucion" style="min-height:40px">@(tieneEjecucion ? "Editar ejecución" : "Registrar ejecución")</button> }
                 @if (a.PuedeMateriales) { <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalMaterial" style="min-height:40px">Agregar material</button> }
                 @if (a.PuedeResolver) { <button type="button" class="btn btn-success js-estado" data-estado="RESUELTO" style="min-height:40px">Marcar resuelto</button> }
                 @if (a.PuedeCerrar) { <button type="button" class="btn btn-dark js-estado" data-estado="CERRADO" style="min-height:40px">Cerrar</button> }
+                @if (!(a.PuedeEvaluar || a.PuedeAprobar || a.PuedeRechazar || a.PuedeCambiarPrioridad || a.PuedeAsignar || a.PuedeIniciar || a.PuedePonerEspera || a.PuedeSalirEspera || a.PuedeEjecucion || a.PuedeMateriales || a.PuedeResolver || a.PuedeCerrar))
+                {
+                    <p class="small text-muted mb-0">No tiene acciones pendientes en el estado "@t.FcEstadoNombre".</p>
+                }
             </div>
         </div>
 
         <div class="border rounded p-3 mb-3">
             <h2 class="h6">Línea de tiempo</h2>
             <ul class="list-unstyled small mb-0">
-            @foreach (var h in Model.Historial)
+            @* Lo más nuevo arriba. Una fila sin cambio de estado (p. ej. "Ejecución registrada") se titula con su comentario. *@
+            @foreach (var h in Model.Historial.OrderByDescending(x => x.FdFecha).ThenByDescending(x => x.FiId))
             {
-                <li class="mb-3 border-start border-3 ps-2" style="border-color:@(h.FcEstadoColor ?? "#ccc") !important">
-                    <div class="fw-semibold">@h.FcEstadoNombre</div>
-                    <div class="text-muted">@h.FdFecha.ToString("dd/MM/yyyy HH:mm") · @(h.FcUsuarioNombre ?? "Sistema")</div>
-                    @if (!string.IsNullOrWhiteSpace(h.FcComentario)) { <div>@h.FcComentario</div> }
+                var sinCambio = h.FiEstadoAnteriorId.HasValue && h.FiEstadoAnteriorId == h.FiEstadoId && !string.IsNullOrWhiteSpace(h.FcComentario);
+                <li class="mb-3 border-start border-3 ps-2" style="border-color:@(sinCambio ? "#9aa0a6" : ColorSeguro(h.FcEstadoColor)) !important">
+                    @if (sinCambio)
+                    {
+                        <div class="fw-semibold">@h.FcComentario</div>
+                        <div class="text-muted">@h.FdFecha.ToString("dd/MM/yyyy HH:mm") · @(h.FcUsuarioNombre ?? "Sistema") · estado @h.FcEstadoNombre</div>
+                    }
+                    else
+                    {
+                        <div class="fw-semibold">@h.FcEstadoNombre</div>
+                        <div class="text-muted">@h.FdFecha.ToString("dd/MM/yyyy HH:mm") · @(h.FcUsuarioNombre ?? "Sistema")</div>
+                    }
+                    @if (!sinCambio && !string.IsNullOrWhiteSpace(h.FcComentario)) { <div>@h.FcComentario</div> }
                     @if (!string.IsNullOrWhiteSpace(h.FcMotivoEsperaNombre)) { <div class="text-warning">Motivo: @h.FcMotivoEsperaNombre</div> }
                 </li>
             }
@@ -249,25 +311,36 @@
 
 @* Modales *@
 <div class="modal fade" id="modalRechazo" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title">Rechazar ticket</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body"><textarea id="txtRechazo" class="form-control" rows="3" placeholder="Motivo del rechazo"></textarea></div>
+    <div class="modal-header"><h5 class="modal-title">Rechazar ticket</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div class="modal-body">
+        <label class="form-label" for="txtRechazo">Motivo del rechazo</label>
+        <textarea id="txtRechazo" class="form-control" rows="3" placeholder="Explique al solicitante por qué no se aprueba"></textarea>
+    </div>
     <div class="modal-footer"><button class="btn btn-danger" id="btnRechazo" style="min-height:40px">Confirmar rechazo</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalEspera" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title">Poner en espera</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-header"><h5 class="modal-title">Poner en espera</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
     <div class="modal-body">
-        <select id="selMotivo" class="form-select mb-2">
-            @if (combos != null) { foreach (var m in combos.MotivosEspera) { <option value="@m.FiId">@m.FcNombre</option> } }
-        </select>
-        <textarea id="txtEspera" class="form-control" rows="2" placeholder="Comentario"></textarea>
+        <div class="mb-3">
+            <label class="form-label" for="selMotivo">Motivo de la espera</label>
+            <select id="selMotivo" class="form-select">
+                @if (combos != null) { foreach (var m in combos.MotivosEspera) { <option value="@m.FiId">@m.FcNombre</option> } }
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="txtEspera">Comentario</label>
+            <textarea id="txtEspera" class="form-control" rows="2" placeholder="Qué se espera y para cuándo"></textarea>
+            <div class="form-text">El tiempo en espera no cuenta para el SLA.</div>
+        </div>
     </div>
     <div class="modal-footer"><button class="btn btn-warning" id="btnEspera" style="min-height:40px">Confirmar</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalPrioridad" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title">Cambiar prioridad</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-header"><h5 class="modal-title">Cambiar prioridad</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
     <div class="modal-body">
+        <label class="form-label" for="selPrioridad">Nueva prioridad</label>
         <select id="selPrioridad" class="form-select">
             @if (combos != null)
             {
@@ -284,57 +357,141 @@
                 }
             }
         </select>
+        <div class="form-text">Los límites de SLA se recalculan con la nueva prioridad.</div>
     </div>
     <div class="modal-footer"><button class="btn btn-primary" id="btnPrioridad" style="min-height:40px">Guardar</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalAsignar" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title">Asignar responsable</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-header"><h5 class="modal-title">Asignar responsable</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
     <div class="modal-body">
-        <select id="selTipoResp" class="form-select mb-2" data-no-select2>
-            <option value="INTERNO">Técnico interno</option>
-            <option value="PROVEEDOR">Proveedor</option>
-        </select>
+        <div class="mb-3">
+            <label class="form-label" for="selTipoResp">Tipo de responsable</label>
+            <select id="selTipoResp" class="form-select" data-no-select2>
+                <option value="INTERNO">Técnico interno</option>
+                <option value="PROVEEDOR">Proveedor externo</option>
+            </select>
+            <div class="form-text">Proveedor externo solo si el trabajo lo hace una empresa contratada.</div>
+        </div>
         @* Sin select2: el toggle de técnico/proveedor oculta el select nativo y select2 lo dejaba visible *@
-        <select id="selTecnico" class="form-select mb-2" data-no-select2>
-            <option value="">Técnico...</option>
-            @if (combos != null) { foreach (var x in combos.Tecnicos) { <option value="@x.FiId">@x.FcNombre</option> } }
-        </select>
-        <select id="selProveedor" class="form-select mb-2" style="display:none" data-no-select2>
-            <option value="">Proveedor...</option>
-            @if (combos != null) { foreach (var x in combos.Proveedores) { <option value="@x.FiId">@x.FcNombre</option> } }
-        </select>
-        <input type="datetime-local" id="fdProgramada" class="form-control" />
+        <div class="mb-3" id="wrapTecnico">
+            <label class="form-label" for="selTecnico">Técnico</label>
+            <select id="selTecnico" class="form-select" data-no-select2>
+                <option value="">Seleccione un técnico...</option>
+                @if (combos != null) { foreach (var x in combos.Tecnicos) { <option value="@x.FiId">@x.FcNombre</option> } }
+            </select>
+        </div>
+        @* Callers: modalAsignar. API: BuscarProveedoresSap. Schema: ticket.fcProveedorSap*. User: "proveedores se toman de... SAP... catálogo local deja de usarse para elegir" *@
+        <div id="wrapProveedorSap" class="mb-3" style="display:none">
+            <label class="form-label" for="selProveedorSap">Proveedor</label>
+            <select id="selProveedorSap" class="form-select" data-select2-ajax data-placeholder="Buscar proveedor SAP (mín. 2 letras)">
+                <option value=""></option>
+            </select>
+            <input type="hidden" id="provSapCodigo" />
+            <input type="hidden" id="provSapNombre" />
+            <div id="sapProvError" class="small text-danger mt-1" style="display:none"></div>
+        </div>
+        <div>
+            <label class="form-label" for="fdProgramada">Fecha programada de atención</label>
+            <div class="input-group">
+                <input type="datetime-local" id="fdProgramada" class="form-control" lang="es" />
+                <button type="button" class="btn btn-outline-secondary fara-btn-ahora" data-fara-ahora="#fdProgramada" title="Poner la fecha y hora actual" aria-label="Ahora"><i class="ti ti-clock"></i><span class="d-none d-sm-inline ms-1">Ahora</span></button>
+            </div>
+            <div class="form-text">Cuándo se planea atender el trabajo (opcional). Se incluye en el correo de asignación al responsable y al solicitante.</div>
+        </div>
     </div>
     <div class="modal-footer"><button class="btn btn-primary" id="btnAsignar" style="min-height:40px">Asignar</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalEjecucion" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title">Ejecución</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body row g-2">
-        <div class="col-md-6"><label class="form-label">Inicio</label><input type="datetime-local" id="ejInicio" class="form-control" value="@(t.FdFechaInicio?.ToString("yyyy-MM-ddTHH:mm"))" /></div>
-        <div class="col-md-6"><label class="form-label">Fin</label><input type="datetime-local" id="ejFin" class="form-control" value="@(t.FdFechaFin?.ToString("yyyy-MM-ddTHH:mm"))" /></div>
-        <div class="col-md-4"><label class="form-label">Horas</label><input type="number" step="0.01" id="ejHoras" class="form-control" value="@t.FnHorasTrabajadas" /></div>
-        <div class="col-md-4"><label class="form-label">Costo mano obra (L)</label><input type="number" step="0.01" id="ejMano" class="form-control" value="@t.FnCostoManoObra" /></div>
-        <div class="col-md-4"><label class="form-label">Costo proveedor (L)</label><input type="number" step="0.01" id="ejProv" class="form-control" value="@t.FnCostoProveedor" /></div>
-        <div class="col-12"><label class="form-label">Diagnóstico</label><textarea id="ejDiag" class="form-control" rows="2">@t.FcDiagnostico</textarea></div>
-        <div class="col-12"><label class="form-label">Causa raíz</label><textarea id="ejCausa" class="form-control" rows="2">@t.FcCausaRaiz</textarea></div>
-        <div class="col-12"><label class="form-label">Trabajo realizado</label><textarea id="ejTrab" class="form-control" rows="2">@t.FcTrabajoRealizado</textarea></div>
-        <div class="col-12"><label class="form-label">Acciones preventivas</label><textarea id="ejPrev" class="form-control" rows="2">@t.FcAccionesPreventivas</textarea></div>
+    <div class="modal-header">
+        <div>
+            <h5 class="modal-title">@(tieneEjecucion ? "Editar ejecución" : "Registrar ejecución")</h5>
+            <div class="small text-muted">Se actualiza el resumen de ejecución del ticket.</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+    </div>
+    <div class="modal-body row g-3">
+        <div class="col-md-6">
+            <label class="form-label" for="ejInicio">Inicio</label>
+            <div class="input-group">
+                <input type="datetime-local" id="ejInicio" class="form-control" lang="es" value="@(t.FdFechaInicio?.ToString("yyyy-MM-ddTHH:mm"))" />
+                <button type="button" class="btn btn-outline-secondary fara-btn-ahora" data-fara-ahora="#ejInicio" title="Poner la fecha y hora actual" aria-label="Ahora"><i class="ti ti-clock"></i><span class="d-none d-sm-inline ms-1">Ahora</span></button>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="ejFin">Fin</label>
+            <div class="input-group">
+                <input type="datetime-local" id="ejFin" class="form-control" lang="es" value="@(t.FdFechaFin?.ToString("yyyy-MM-ddTHH:mm"))" />
+                <button type="button" class="btn btn-outline-secondary fara-btn-ahora" data-fara-ahora="#ejFin" title="Poner la fecha y hora actual" aria-label="Ahora"><i class="ti ti-clock"></i><span class="d-none d-sm-inline ms-1">Ahora</span></button>
+            </div>
+        </div>
+        <div class="col-md-4"><label class="form-label" for="ejHoras">Horas trabajadas</label><input type="number" step="0.01" min="0" id="ejHoras" class="form-control" value="@t.FnHorasTrabajadas" /></div>
+        <div class="col-md-4"><label class="form-label" for="ejMano">Costo mano de obra (L)</label><input type="number" step="0.01" min="0" id="ejMano" class="form-control" value="@t.FnCostoManoObra" /></div>
+        <div class="col-md-4"><label class="form-label" for="ejProv">Costo proveedor (L)</label><input type="number" step="0.01" min="0" id="ejProv" class="form-control" value="@t.FnCostoProveedor" /></div>
+        <div class="col-12"><label class="form-label" for="ejDiag">Diagnóstico</label><textarea id="ejDiag" class="form-control" rows="2">@t.FcDiagnostico</textarea></div>
+        <div class="col-12"><label class="form-label" for="ejCausa">Causa raíz</label><textarea id="ejCausa" class="form-control" rows="2">@t.FcCausaRaiz</textarea></div>
+        <div class="col-12"><label class="form-label" for="ejTrab">Trabajo realizado</label><textarea id="ejTrab" class="form-control" rows="2">@t.FcTrabajoRealizado</textarea></div>
+        <div class="col-12"><label class="form-label" for="ejPrev">Acciones preventivas</label><textarea id="ejPrev" class="form-control" rows="2">@t.FcAccionesPreventivas</textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-primary" id="btnEjecucion" style="min-height:40px">Guardar</button></div>
 </div></div></div>
 
+@* Callers: modalMaterial. API: BuscarArticulosSap + GuardarMaterial. Schema: ticketmaterial.fcCodigoSap. User: "busca el artículo SAP (select2...) se guarda código SAP + descripción + cantidad + costo" *@
 <div class="modal fade" id="modalMaterial" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title">Material</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body row g-2">
-        <div class="col-12"><input id="matDesc" class="form-control" placeholder="Descripción" /></div>
-        <div class="col-4"><input id="matCant" type="number" step="0.01" class="form-control" value="1" placeholder="Cant." /></div>
-        <div class="col-4"><input id="matUnd" class="form-control" placeholder="Unidad" /></div>
-        <div class="col-4"><input id="matCosto" type="number" step="0.01" class="form-control" value="0" placeholder="Costo L" /></div>
+    <div class="modal-header"><h5 class="modal-title">Agregar material</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body row g-3">
+        <div class="col-12">
+            <label class="form-label" for="selArticuloSap">Artículo SAP</label>
+            <select id="selArticuloSap" class="form-select" data-select2-ajax data-placeholder="Buscar artículo SAP (mín. 2 letras)">
+                <option value=""></option>
+            </select>
+            <div id="sapArtError" class="small text-danger mt-1" style="display:none"></div>
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="matDesc">Descripción</label>
+            <input type="hidden" id="matCodigoSap" /><input id="matDesc" class="form-control" placeholder="Descripción" />
+        </div>
+        <div class="col-4">
+            <label class="form-label" for="matCant">Cantidad</label>
+            <input id="matCant" type="number" step="0.01" min="0.01" class="form-control" value="1" />
+        </div>
+        <div class="col-4">
+            <label class="form-label" for="matUnd">Unidad</label>
+            <input id="matUnd" class="form-control" placeholder="Unidad" />
+        </div>
+        <div class="col-4">
+            <label class="form-label" for="matCosto">Costo unitario (L)</label>
+            <input id="matCosto" type="number" step="0.01" min="0" class="form-control" value="0" />
+        </div>
     </div>
     <div class="modal-footer"><button class="btn btn-primary" id="btnMaterial" style="min-height:40px">Guardar</button></div>
 </div></div></div>
+
+@* Recordatorio diario de SLA vencido (t9): solo ADMIN/JEFATURA/MANTENIMIENTO (ViewBag lo llena el controlador) y solo si el ticket está vencido y no resuelto/cerrado. *@
+@if (ViewBag.RecordatorioSla is FM.OrigenDatos.Modelos.Tickets.TicketRecordatorioSlaModelo rs && rs.FbVencido && rs.FbAplica)
+{
+    var activos = !rs.FbSinRecordatorioSla;
+    <div class="border rounded p-3 mt-3" id="fara-recordatorio-sla">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="swRecordatorioSla" style="width:2.6em;height:1.4em"
+                       @(activos ? "checked" : "") data-ticket="@t.FiId" />
+                <label class="form-check-label fw-semibold" for="swRecordatorioSla">
+                    Recordatorios de SLA:
+                    <span id="lblRecordatorioSla" class="fara-badge @(activos ? "fara-badge-activo" : "fara-badge-inactivo")">@(activos ? "activados" : "desactivados")</span>
+                </label>
+            </div>
+        </div>
+        <p class="text-muted small mb-0 mt-2">
+            Correo diario mientras el ticket siga vencido. La primera alerta de vencimiento siempre se envía.
+            @if (!activos && rs.FdSinRecordatorioSla.HasValue)
+            {
+                <span>Desactivados por @(rs.FcSinRecordatorioSlaPor ?? "—") el @rs.FdSinRecordatorioSla.Value.ToString("dd/MM/yyyy HH:mm").</span>
+            }
+        </p>
+    </div>
+}
 
 @section Scripts {
 <script>
@@ -354,16 +511,58 @@
     $('#btnPrioridad').on('click', function(){
         ajaxPost('/Tickets/CambiarPrioridad', { id:id, prioridadId:$('#selPrioridad').val() }).then(reloadOk);
     });
+    // Callers: modalAsignar/modalMaterial. API: Buscar*Sap select2. User: "select2 con data-select2-ajax"
+    var sapLang = {
+        noResults: function(){ return 'No se encontraron resultados'; },
+        searching: function(){ return 'Buscando...'; },
+        inputTooShort: function(a){ var n=a.minimum-a.input.length; return 'Escriba '+n+' caracter'+(n===1?'':'es')+' más'; }
+    };
+    function initSapSelect2($el, url, $err, onSelect){
+        if (!$el.length || $el.hasClass('select2-hidden-accessible')) return;
+        $el.select2({
+            theme: 'bootstrap-5', width: '100%', allowClear: true,
+            // Si SAP respondió un aviso (p. ej. "SAP no está configurado") se muestra dentro de la lista,
+            // porque la lista abierta tapa el aviso que está debajo del campo.
+            language: $.extend({}, sapLang, { noResults: function(){ return $err.text() || sapLang.noResults(); } }),
+            placeholder: $el.data('placeholder') || 'Buscar...',
+            minimumInputLength: 2, dropdownParent: $el.closest('.modal'),
+            ajax: {
+                url: url, dataType: 'json', delay: 300,
+                data: function(params){ return { q: params.term }; },
+                processResults: function(data){
+                    if (data && data.error) { $err.text(data.error).show(); }
+                    else { $err.hide().text(''); }
+                    return { results: (data && data.results) || [] };
+                },
+                error: function(){ $err.text('No se pudo consultar SAP.').show(); }
+            }
+        });
+        if (onSelect) $el.on('select2:select', function(e){ onSelect(e.params.data); });
+        $el.on('select2:clear', function(){ $err.hide().text(''); });
+    }
+    initSapSelect2($('#selArticuloSap'), '/Tickets/BuscarArticulosSap', $('#sapArtError'), function(d){
+        $('#matCodigoSap').val(d.itemCode || d.id || '');
+        $('#matDesc').val(d.itemName || '');
+        if (d.unidad) $('#matUnd').val(d.unidad);
+        if (d.costo != null) $('#matCosto').val(d.costo);
+    });
+    initSapSelect2($('#selProveedorSap'), '/Tickets/BuscarProveedoresSap', $('#sapProvError'), function(d){
+        $('#provSapCodigo').val(d.cardCode || d.id || '');
+        $('#provSapNombre').val(d.cardName || '');
+    });
     $('#selTipoResp').on('change', function(){
         var interno = this.value === 'INTERNO';
-        $('#selTecnico').toggle(interno); $('#selProveedor').toggle(!interno);
+        $('#wrapTecnico').toggle(interno);
+        $('#wrapProveedorSap').toggle(!interno);
     });
     $('#btnAsignar').on('click', function(){
         var tipo = $('#selTipoResp').val();
         ajaxPost('/Tickets/Asignar', {
             id:id, tipoResponsable:tipo,
             tecnicoId: tipo==='INTERNO' ? $('#selTecnico').val() : null,
-            proveedorId: tipo==='PROVEEDOR' ? $('#selProveedor').val() : null,
+            proveedorId: null,
+            proveedorSapCodigo: tipo==='PROVEEDOR' ? $('#provSapCodigo').val() : null,
+            proveedorSapNombre: tipo==='PROVEEDOR' ? $('#provSapNombre').val() : null,
             fechaProgramada: $('#fdProgramada').val() || null
         }).then(reloadOk);
     });
@@ -378,7 +577,8 @@
     $('#btnMaterial').on('click', function(){
         ajaxPost('/Tickets/GuardarMaterial', {
             id:id, descripcion:$('#matDesc').val(), cantidad:$('#matCant').val(),
-            unidad:$('#matUnd').val(), costoUnitario:$('#matCosto').val()
+            unidad:$('#matUnd').val(), costoUnitario:$('#matCosto').val(),
+            codigoSap: $('#matCodigoSap').val() || null
         }).then(reloadOk);
     });
     $('#formComentario').on('submit', function(e){
@@ -387,17 +587,34 @@
             id:id, comentario: this.comentario.value, interno: $('#interno').is(':checked')
         }).then(reloadOk);
     });
+    // Validar trabajo: estrellas llenas hasta la elegida; "No" exige comentario.
+    var textosEstrella = ['', 'Muy mala', 'Mala', 'Regular', 'Buena', 'Excelente'];
+    function pintarEstrellas(v){
+        $('.btn-estrella').each(function(){
+            var on = $(this).data('val') <= v;
+            $(this).toggleClass('activa', on).attr('aria-checked', $(this).data('val') == v ? 'true' : 'false');
+        });
+        $('#txtEstrellas').text(v ? textosEstrella[v] : '');
+    }
     $('.btn-estrella').on('click', function(){
-        var v = $(this).data('val'); $('#calificacion').val(v);
-        $('.btn-estrella').removeClass('btn-warning').addClass('btn-outline-warning');
-        $('.btn-estrella').each(function(){ if($(this).data('val')<=v) $(this).removeClass('btn-outline-warning').addClass('btn-warning'); });
-    }).filter('[data-val="5"]').trigger('click');
+        var v = $(this).data('val'); $('#calificacion').val(v); pintarEstrellas(v);
+    });
+    $('input[name="conforme"]').on('change', function(){
+        var no = $('#conformeNo').is(':checked');
+        $('#lblComentarioValidar').text(no ? 'Qué sigue fallando (obligatorio)' : 'Comentario (opcional)');
+        $('#txtValidar').prop('required', no).attr('placeholder', no ? 'Describa qué sigue mal para que mantenimiento lo revise' : 'Cuéntenos cómo quedó el trabajo');
+        $('#btnValidar').text(no ? 'Regresar a mantenimiento' : 'Validar trabajo')
+            .toggleClass('btn-success', !no).toggleClass('btn-danger', no);
+    });
     $('#formEncuesta').on('submit', function(e){
         e.preventDefault();
-        ajaxPost('/Tickets/Encuesta', {
-            id:id, calificacion:$('#calificacion').val(),
-            conforme:$('#conforme').is(':checked'), comentario:this.comentario.value
-        }).then(reloadOk);
+        var sel = $('input[name="conforme"]:checked').val();
+        var cal = parseInt($('#calificacion').val() || '0', 10);
+        var com = (this.comentario.value || '').trim();
+        if (!sel) { FaraComun.mostrarMensaje({ fbSucces:false, fcMensaje:'Indique si el trabajo quedó bien o si sigue el problema.' }); return; }
+        if (!cal) { FaraComun.mostrarMensaje({ fbSucces:false, fcMensaje:'Seleccione una calificación de 1 a 5 estrellas.' }); return; }
+        if (sel === 'false' && !com) { FaraComun.mostrarMensaje({ fbSucces:false, fcMensaje:'Escriba qué sigue fallando para que mantenimiento lo revise.' }); $('#txtValidar').trigger('focus'); return; }
+        ajaxPost('/Tickets/Encuesta', { id:id, calificacion:cal, conforme: sel === 'true', comentario: com }).then(reloadOk);
     });
     // Dropzone: sube los archivos uno por uno (el servidor valida cada uno) y muestra un resumen.
     $('#formAdjunto').on('submit', function(e){
@@ -438,6 +655,39 @@
             var msg = (ok ? ok + ' subido(s). ' : '') + 'No se guardaron: ' + errores.join(' | ');
             FaraComun.mostrarMensaje({ fbSucces: false, fcMensaje: msg });
             if (ok) $(document).one('click', '.swal2-confirm', function () { location.reload(); });
+        });
+    });
+})();
+</script>
+<script>
+// Recordatorio diario de SLA (t9): confirmación con SweetAlert y toast al cambiar.
+(function () {
+    var sw = document.getElementById('swRecordatorioSla');
+    if (!sw) return;
+    sw.addEventListener('change', function () {
+        var activar = sw.checked;      // estado pedido
+        sw.checked = !activar;         // no cambia hasta confirmar
+        Swal.fire({
+            icon: 'question',
+            title: activar ? '¿Activar recordatorios de SLA?' : '¿Desactivar recordatorios de SLA?',
+            text: activar
+                ? 'Se volverá a enviar el correo diario mientras el ticket siga vencido.'
+                : 'Ya no se enviará el correo diario de este ticket mientras siga vencido. Quedará registrado en el ticket.',
+            showCancelButton: true,
+            confirmButtonText: activar ? 'Activar' : 'Desactivar',
+            cancelButtonText: 'Cancelar'
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            sw.disabled = true;
+            ajaxPost('/Tickets/RecordatorioSla', { id: sw.getAttribute('data-ticket'), desactivar: !activar }).then(function (resp) {
+                sw.disabled = false;
+                if (!resp || !(resp.fbSucces === true || resp.fbSucces === 1)) return;
+                sw.checked = activar;
+                var lbl = document.getElementById('lblRecordatorioSla');
+                lbl.textContent = activar ? 'activados' : 'desactivados';
+                lbl.className = 'fara-badge ' + (activar ? 'fara-badge-activo' : 'fara-badge-inactivo');
+                setTimeout(function () { location.reload(); }, 1200);
+            }, function () { sw.disabled = false; });
         });
     });
 })();

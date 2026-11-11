@@ -20,13 +20,22 @@ public class CatalogosController : Controller
 {
     private static readonly HashSet<string> TiposValidos = new(StringComparer.OrdinalIgnoreCase)
     {
-        "regiones", "sucursales", "ubicaciones", "activos", "tipos", "categorias",
+        // User instruction: "agrega Áreas y Departamentos al módulo Catálogos"
+        "regiones", "sucursales", "areas", "departamentos", "ubicaciones", "activos", "tipos", "categorias",
         "prioridades", "estados", "motivos", "proveedores", "tecnicos", "parametros"
     };
 
+    // Callers: DI; Views/Catalogos/_FormularioCatalogo tecnicos
+    // API: ViewBag.UsuariosSistema; tecnico.fiUsuarioId vía sp_catalogo_tecnico_guardar
+    // User instruction: "Agrega al formulario un select Usuario del sistema (opcional, usuarios activos)"
     private readonly CatalogoServicio _catalogos;
+    private readonly SeguridadServicio _seguridad;
 
-    public CatalogosController(CatalogoServicio catalogos) => _catalogos = catalogos;
+    public CatalogosController(CatalogoServicio catalogos, SeguridadServicio seguridad)
+    {
+        _catalogos = catalogos;
+        _seguridad = seguridad;
+    }
 
     private int UsuarioId => AppAccess.UsuarioId(User) ?? 0;
 
@@ -54,6 +63,8 @@ public class CatalogosController : Controller
         {
             "regiones" => (await _catalogos.RegionListarAsync(false, ct)).Datos,
             "sucursales" => (await _catalogos.SucursalListarAsync(false, null, ct)).Datos,
+            "areas" => (await _catalogos.AreaListarAsync(false, ct)).Datos,
+            "departamentos" => (await _catalogos.DepartamentoListarAsync(false, null, ct)).Datos,
             "ubicaciones" => (await _catalogos.UbicacionListarAsync(false, null, ct)).Datos,
             "activos" => (await _catalogos.ActivoListarAsync(false, null, null, ct)).Datos,
             "tipos" => (await _catalogos.TipoListarAsync(false, ct)).Datos,
@@ -112,6 +123,8 @@ public class CatalogosController : Controller
         {
             "regiones" => await _catalogos.RegionGuardarAsync(id, f["fcCodigo"]!, f["fcNombre"]!, uid, ct),
             "sucursales" => await _catalogos.SucursalGuardarAsync(id, f["fcCodigo"]!, f["fcNombre"]!, f["fcTipo"]!, ParseInt(f["fiRegionId"]), f["fcDireccion"], f["fcTelefono"], uid, ct),
+            "areas" => await _catalogos.AreaGuardarAsync(id, f["fcCodigo"]!, f["fcNombre"]!, uid, ct),
+            "departamentos" => await _catalogos.DepartamentoGuardarAsync(id, f["fcCodigo"]!, f["fcNombre"]!, ParseInt(f["fiAreaId"]), uid, ct),
             "ubicaciones" => await _catalogos.UbicacionGuardarAsync(id, f["fcCodigo"]!, f["fcNombre"]!, ParseInt(f["fiSucursalId"]), uid, ct),
             "activos" => await _catalogos.ActivoGuardarAsync(id, f["fcCodigo"]!, f["fcNombre"]!, f["fcMarca"], f["fcModelo"], f["fcSerie"],
                 ParseInt(f["fiSucursalId"]), ParseOpt(f["fiUbicacionId"]), ParseOpt(f["fiCategoriaId"]), ParseDate(f["fdFechaInstalacion"]), uid, ct),
@@ -150,6 +163,8 @@ public class CatalogosController : Controller
         {
             "regiones" => await _catalogos.RegionActivarAsync(id, activo, uid, ct),
             "sucursales" => await _catalogos.SucursalActivarAsync(id, activo, uid, ct),
+            "areas" => await _catalogos.AreaActivarAsync(id, activo, uid, ct),
+            "departamentos" => await _catalogos.DepartamentoActivarAsync(id, activo, uid, ct),
             "ubicaciones" => await _catalogos.UbicacionActivarAsync(id, activo, uid, ct),
             "activos" => await _catalogos.ActivoActivarAsync(id, activo, uid, ct),
             "tipos" => await _catalogos.TipoActivarAsync(id, activo, uid, ct),
@@ -189,6 +204,15 @@ public class CatalogosController : Controller
             Combos = combos
         };
 
+        // User instruction: "select Usuario del sistema (opcional, usuarios activos)"
+        if (tipo == "tecnicos")
+        {
+            var usuarios = await _seguridad.ListarUsuariosAsync(soloActivos: true, ct);
+            ViewBag.UsuariosSistema = (usuarios.Datos ?? new List<FM.OrigenDatos.Modelos.Seguridad.UsuarioModelo>())
+                .OrderBy(u => u.FcNombre)
+                .ToList();
+        }
+
         if (id is null or <= 0) return vm;
 
         switch (tipo)
@@ -198,6 +222,12 @@ public class CatalogosController : Controller
                 break;
             case "sucursales":
                 MapSucursal(vm, (await _catalogos.SucursalObtenerAsync(id.Value, ct)).Datos.FirstOrDefault());
+                break;
+            case "areas":
+                MapArea(vm, (await _catalogos.AreaObtenerAsync(id.Value, ct)).Datos.FirstOrDefault());
+                break;
+            case "departamentos":
+                MapDepartamento(vm, (await _catalogos.DepartamentoObtenerAsync(id.Value, ct)).Datos.FirstOrDefault());
                 break;
             case "ubicaciones":
                 MapUbicacion(vm, (await _catalogos.UbicacionObtenerAsync(id.Value, ct)).Datos.FirstOrDefault());
@@ -238,6 +268,16 @@ public class CatalogosController : Controller
     {
         if (x == null) return;
         vm.FiId = x.FiId; vm.FcCodigo = x.FcCodigo; vm.FcNombre = x.FcNombre;
+    }
+    private static void MapArea(CatalogoFormViewModel vm, AreaModelo? x)
+    {
+        if (x == null) return;
+        vm.FiId = x.FiId; vm.FcCodigo = x.FcCodigo; vm.FcNombre = x.FcNombre;
+    }
+    private static void MapDepartamento(CatalogoFormViewModel vm, DepartamentoModelo? x)
+    {
+        if (x == null) return;
+        vm.FiId = x.FiId; vm.FcCodigo = x.FcCodigo; vm.FcNombre = x.FcNombre; vm.FiAreaId = x.FiAreaId;
     }
     private static void MapSucursal(CatalogoFormViewModel vm, SucursalModelo? x)
     {
@@ -326,6 +366,7 @@ public class CatalogosController : Controller
         vm.FcModelo = f["fcModelo"];
         vm.FcSerie = f["fcSerie"];
         vm.FiRegionId = ParseOpt(f["fiRegionId"]);
+        vm.FiAreaId = ParseOpt(f["fiAreaId"]);
         vm.FiSucursalId = ParseOpt(f["fiSucursalId"]);
         vm.FiUbicacionId = ParseOpt(f["fiUbicacionId"]);
         vm.FiCategoriaId = ParseOpt(f["fiCategoriaId"]);
@@ -350,7 +391,9 @@ public class CatalogosController : Controller
     private static string Titulo(string tipo) => tipo switch
     {
         "regiones" => "Regiones",
-        "sucursales" => "Sucursales / áreas / departamentos",
+        "sucursales" => "Sucursales",
+        "areas" => "Áreas",
+        "departamentos" => "Departamentos",
         "ubicaciones" => "Ubicaciones",
         "activos" => "Activos",
         "tipos" => "Tipos de mantenimiento",

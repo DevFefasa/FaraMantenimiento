@@ -147,6 +147,8 @@ public class TecnicoModelo
     public string FcCodigo { get; set; } = "";
     public string FcNombre { get; set; } = "";
     public int? FiUsuarioId { get; set; }
+    // Callers: Catalogos Entidad/form técnicos; User instruction: "Usuario del sistema" + lista
+    public string? FcUsuarioNombre { get; set; }
     public string? FcTelefono { get; set; }
     public int? FiCategoriaId { get; set; }
     public string? FcCategoriaNombre { get; set; }
@@ -161,6 +163,31 @@ public class ParametroModelo
     public string FcClave { get; set; } = "";
     public string FcValor { get; set; } = "";
     public string? FcDescripcion { get; set; }
+    public bool FbActivo { get; set; }
+    public DateTime FdCreado { get; set; }
+    public DateTime? FdModificado { get; set; }
+}
+
+// Callers: CatalogoRepositorio.Area*/Departamento*; CatalogosController/Views
+// API: DTOs sp_catalogo_area_* / sp_catalogo_departamento_*
+// User instruction: "Catálogos: agrega Áreas y Departamentos al módulo Catálogos"
+public class AreaModelo
+{
+    public int FiId { get; set; }
+    public string FcCodigo { get; set; } = "";
+    public string FcNombre { get; set; } = "";
+    public bool FbActivo { get; set; }
+    public DateTime FdCreado { get; set; }
+    public DateTime? FdModificado { get; set; }
+}
+
+public class DepartamentoModelo
+{
+    public int FiId { get; set; }
+    public string FcCodigo { get; set; } = "";
+    public string FcNombre { get; set; } = "";
+    public int FiAreaId { get; set; }
+    public string? FcAreaNombre { get; set; }
     public bool FbActivo { get; set; }
     public DateTime FdCreado { get; set; }
     public DateTime? FdModificado { get; set; }

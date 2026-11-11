@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FaraMantenimiento.Helpers;
 using FaraMantenimiento.ViewModels.Tickets;
 using FM.OrigenDatos.Modelos.Adjunto;
+using FM.OrigenDatos.Modelos.Tickets;
 using FM.Programacion.Constantes;
 using FM.Programacion.Servicios;
 using FM.Programacion.Servicios.Tickets;
@@ -16,12 +17,17 @@ public class TicketsController : Controller
     private readonly TicketServicio _tickets;
     private readonly CatalogoServicio _catalogos;
     private readonly ExportacionServicio _exportacion;
+    private readonly SapServicio _sap;
 
-    public TicketsController(TicketServicio tickets, CatalogoServicio catalogos, ExportacionServicio exportacion)
+    // Callers: Program.cs DI. API: BuscarArticulosSap/BuscarProveedoresSap. Schema: ConnectionStrings:SapHana, Sap:Esquema.
+    // Confirm: SapServicio registrado en ProgramacionServiceCollectionExtensions.
+    // User instruction: "Endpoints de búsqueda (AJAX, mínimo 2 letras, máximo 30 resultados) para artículos... y proveedores"
+    public TicketsController(TicketServicio tickets, CatalogoServicio catalogos, ExportacionServicio exportacion, SapServicio sap)
     {
         _tickets = tickets;
         _catalogos = catalogos;
         _exportacion = exportacion;
+        _sap = sap;
     }
 
     private int UsuarioId => AppAccess.UsuarioId(User) ?? 0;
@@ -89,111 +95,128 @@ public class TicketsController : Controller
         if (rechazados.Count > 0)
             TempData["Error"] = "Ticket creado, pero algunos adjuntos no se guardaron. " + string.Join(" | ", rechazados);
         TempData["Exito"] = resp.FcMensaje;
-        return id > 0 ? RedirectToAction(nameof(Detalle), new { id }) : RedirectToAction(nameof(Mios));
+        return id > 0 ? RedirectToAction(nameof(Detalle), new { id }) : RedirectToAction(nameof(Index));
     }
 
-    // Bandejas: título, permiso y filtro fijo de cada una (los usan la lista y la exportación).
-    private static readonly Dictionary<string, (string Titulo, string Permiso)> Bandejas = new(StringComparer.OrdinalIgnoreCase)
+    // Pestañas de /Tickets (orden de la pantalla). El filtrado por vista y su permiso están en sp_ticket_listar_vista.
+    public static readonly IReadOnlyList<(string Vista, string Titulo, string Corto)> Vistas = new[]
     {
-        ["mios"] = ("Mis tickets", Pantallas.TicketMios),
-        ["bandeja"] = ("Bandeja de mantenimiento", Pantallas.TicketBandeja),
-        ["aprobacion"] = ("Aprobación", Pantallas.TicketAprobacion),
-        ["todos"] = ("Todos los tickets", Pantallas.TicketTodos)
+        ("creados", "Tickets creados por mí", "Creados por mí"),
+        ("asignados", "Tickets asignados a mí", "Asignados a mí"),
+        ("equipo", "Tickets de mi equipo", "Mi equipo"),
+        ("aprobar", "Tickets por aprobar", "Por aprobar"),
+        ("atender", "Tickets por atender", "Por atender"),
+        ("todos", "Todos los tickets", "Todos")
     };
 
-    private TicketFiltro FiltroDe(string modo, TicketFiltro? filtro, string? estado)
+    private static string? VistaValida(string? vista)
     {
-        switch (modo.ToLowerInvariant())
+        var v = (vista ?? "").Trim().ToLowerInvariant();
+        // Nombres viejos (Exportar?modo=...) → vista nueva.
+        v = v switch { "mios" => "creados", "bandeja" => "atender", "aprobacion" => "aprobar", _ => v };
+        return Vistas.Any(x => x.Vista == v) ? v : null;
+    }
+
+    private bool TienePermisoTickets() =>
+        User.Claims.Any(c => c.Type == AppAccess.PermisoClaim && c.Value.StartsWith("TICKET_", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Vista por defecto: "creados" si puede crear o ver los suyos; si no, la primera de su función.</summary>
+    private string VistaPorDefecto(IEnumerable<string> disponibles)
+    {
+        var d = disponibles.ToList();
+        if (User.HasClaim(AppAccess.PermisoClaim, Pantallas.TicketCrear) || User.HasClaim(AppAccess.PermisoClaim, Pantallas.TicketMios))
+            return "creados";
+        foreach (var v in new[] { "aprobar", "atender", "todos", "equipo", "asignados", "creados" })
+            if (d.Contains(v)) return v;
+        return "creados";
+    }
+
+    private static TicketFiltro FiltroDe(string vista, TicketFiltro? filtro, string? estado)
+    {
+        switch (vista)
         {
-            case "mios":
-                return new TicketFiltro { FiSolicitanteId = UsuarioId };
-            case "bandeja":
+            case "atender":
                 return new TicketFiltro { FcEstadoCodigo = estado, FbSoloAbiertos = string.IsNullOrWhiteSpace(estado) };
-            case "aprobacion":
-                return new TicketFiltro { FcEstadoCodigo = EstadosTicket.EnEvaluacion };
-            default:
+            case "todos":
                 filtro ??= new TicketFiltro();
                 filtro.FiSolicitanteId = null;
                 return filtro;
+            default:
+                return new TicketFiltro();
         }
     }
 
-    [HttpGet, RequierePermiso(Pantallas.TicketMios)]
-    public Task<IActionResult> Mios(CancellationToken ct)
-    {
-        var f = FiltroDe("mios", null, null);
-        f.FiPagina = 1; f.FiTamano = 50;
-        return ListaAsync("mios", f, ct);
-    }
-
-    [HttpGet, RequierePermiso(Pantallas.TicketBandeja)]
-    public Task<IActionResult> Bandeja(string? estado, CancellationToken ct)
-    {
-        var f = FiltroDe("bandeja", null, estado);
-        f.FiPagina = 1; f.FiTamano = 50;
-        ViewBag.Estado = estado;
-        return ListaAsync("bandeja", f, ct);
-    }
-
-    [HttpGet, RequierePermiso(Pantallas.TicketAprobacion)]
-    public Task<IActionResult> Aprobacion(CancellationToken ct)
-    {
-        var f = FiltroDe("aprobacion", null, null);
-        f.FiPagina = 1; f.FiTamano = 50;
-        return ListaAsync("aprobacion", f, ct);
-    }
-
-    [HttpGet, RequierePermiso(Pantallas.TicketTodos)]
-    public async Task<IActionResult> Index(TicketFiltro filtro, CancellationToken ct)
-    {
-        filtro = FiltroDe("todos", filtro, null);
-        filtro.FiPagina = filtro.FiPagina <= 0 ? 1 : filtro.FiPagina;
-        filtro.FiTamano = filtro.FiTamano <= 0 ? 20 : filtro.FiTamano;
-        return await ListaAsync("todos", filtro, ct);
-    }
-
-    /// <summary>Excel de una bandeja con los mismos filtros que la pantalla (todas las páginas).</summary>
+    // Enlaces viejos (menú anterior, correos, dashboard): redirigen a la pestaña equivalente.
     [HttpGet]
-    public async Task<IActionResult> Exportar(string modo, TicketFiltro filtro, string? estado, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(modo) || !Bandejas.TryGetValue(modo, out var b))
-            return NotFound();
-        if (!User.HasClaim(AppAccess.PermisoClaim, b.Permiso))
-            return Forbid();
+    public IActionResult Mios() => RedirectToAction(nameof(Index), new { vista = "creados" });
 
-        var f = FiltroDe(modo, filtro, estado);
-        var (cab, filas) = await _tickets.ListarParaExportarAsync(f, UsuarioId, RolCodigo, ct: ct);
+    [HttpGet]
+    public IActionResult Bandeja(string? estado) => RedirectToAction(nameof(Index), new { vista = "atender", estado });
+
+    [HttpGet]
+    public IActionResult Aprobacion() => RedirectToAction(nameof(Index), new { vista = "aprobar" });
+
+    /// <summary>Pantalla única de tickets con pestañas (?vista=creados|asignados|equipo|aprobar|atender|todos).</summary>
+    [HttpGet]
+    public async Task<IActionResult> Index(string? vista, string? estado, TicketFiltro filtro, CancellationToken ct)
+    {
+        if (!TienePermisoTickets()) return Forbid();
+
+        var resumen = await _tickets.VistasAsync(UsuarioId, ct);
+        var disponibles = resumen.Where(x => x.FbDisponible).Select(x => x.FcVista).ToList();
+        var v = VistaValida(vista);
+        if (v == null || !disponibles.Contains(v))
+        {
+            if (!string.IsNullOrWhiteSpace(vista))
+                TempData["Error"] = "No tiene acceso a esa vista de tickets.";
+            v = VistaPorDefecto(disponibles);
+            if (!string.IsNullOrWhiteSpace(vista)) return RedirectToAction(nameof(Index), new { vista = v });
+        }
+
+        var f = FiltroDe(v, filtro, estado);
+        f.FiPagina = f.FiPagina <= 0 ? 1 : f.FiPagina;
+        f.FiTamano = v == "todos" ? (f.FiTamano <= 0 ? 20 : f.FiTamano) : 200;
+        ViewBag.Estado = estado;
+        return await ListaAsync(v, f, resumen, ct);
+    }
+
+    /// <summary>Excel de una vista con los mismos filtros que la pantalla (todas las páginas); el SP valida el permiso.</summary>
+    [HttpGet]
+    public async Task<IActionResult> Exportar(string? vista, string? modo, TicketFiltro filtro, string? estado, CancellationToken ct)
+    {
+        var v = VistaValida(vista ?? modo);
+        if (v == null) return NotFound();
+
+        var f = FiltroDe(v, filtro, estado);
+        var (cab, filas) = await _tickets.ListarParaExportarAsync(v, f, UsuarioId, ct: ct);
         if (!cab.FbSucces)
         {
+            if (cab.FiCodigo is 401 or 403) return Forbid();
             TempData["Error"] = cab.FcMensaje;
-            return modo.ToLowerInvariant() switch
-            {
-                "bandeja" => RedirectToAction(nameof(Bandeja), new { estado }),
-                "aprobacion" => RedirectToAction(nameof(Aprobacion)),
-                "todos" => RedirectToAction(nameof(Index)),
-                _ => RedirectToAction(nameof(Mios))
-            };
+            return RedirectToAction(nameof(Index), new { vista = v, estado });
         }
 
-        var titulo = b.Titulo + (string.IsNullOrWhiteSpace(estado) ? "" : $" ({estado})") + $" · {DateTime.Now:dd/MM/yyyy HH:mm}";
+        var titulo = Vistas.First(x => x.Vista == v).Titulo + (string.IsNullOrWhiteSpace(estado) ? "" : $" ({estado})") + $" · {DateTime.Now:dd/MM/yyyy HH:mm}";
         var bytes = _exportacion.ExcelTickets(titulo, filas);
-        var nombre = $"Tickets_{modo.ToLowerInvariant()}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+        var nombre = $"Tickets_{v}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nombre);
     }
 
-    private async Task<IActionResult> ListaAsync(string modo, TicketFiltro filtro, CancellationToken ct)
+    private async Task<IActionResult> ListaAsync(string vista, TicketFiltro filtro, List<TicketVistaResumenModelo> resumen, CancellationToken ct)
     {
-        var titulo = Bandejas[modo].Titulo;
-        ViewData["Title"] = titulo;
-        var resp = await _tickets.ListarAsync(filtro, UsuarioId, RolCodigo, ct);
+        var titulo = Vistas.First(x => x.Vista == vista).Titulo;
+        ViewData["Title"] = "Tickets";
+        var resp = await _tickets.ListarAsync(vista, filtro, UsuarioId, ct);
+        if (!resp.FbSucces) TempData["Error"] = resp.FcMensaje;
         var vm = new TicketListaViewModel
         {
             Titulo = titulo,
-            Modo = modo,
+            Modo = vista,
             Filtro = filtro,
             Items = resp.Datos,
             FjData = resp.FjData,
-            Combos = await CombosAsync(ct)
+            Combos = await CombosAsync(ct),
+            Vistas = resumen
         };
         return View("Index", vm);
     }
@@ -205,12 +228,21 @@ public class TicketsController : Controller
         if (!det.Cabecera.FbSucces || det.Ticket == null)
         {
             TempData["Error"] = det.Cabecera.FcMensaje;
-            return RedirectToAction(nameof(Mios));
+            return RedirectToAction(nameof(Index));
         }
 
         ViewData["Title"] = det.Ticket.FcNumero;
         LimitesAdjuntos();
         ViewBag.PuedeEvidencia = TicketServicio.PuedeCargarEvidencia(RolCodigo);
+        if (string.Equals(det.Ticket.FcEstadoCodigo, EstadosTicket.Resuelto, StringComparison.OrdinalIgnoreCase))
+        {
+            // Aviso "si no responde en N días el ticket se cierra solo" (parámetro DIAS_CIERRE_AUTOMATICO).
+            var par = await _catalogos.ParametroListarAsync(true, ct);
+            var dias = par.FbSucces ? par.Datos.FirstOrDefault(p => p.FcClave == "DIAS_CIERRE_AUTOMATICO")?.FcValor : null;
+            if (int.TryParse(dias, out var n) && n > 0) ViewBag.DiasCierreAutomatico = n;
+        }
+        if (TicketServicio.PuedeCambiarRecordatorioSla(RolCodigo))
+            ViewBag.RecordatorioSla = await _tickets.ObtenerRecordatorioSlaAsync(id, ct);
         var adj =await _tickets.ListarAdjuntosAsync(id, null, UsuarioId, RolCodigo, ct);
         return View(new TicketDetalleViewModel
         {
@@ -233,10 +265,49 @@ public class TicketsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Asignar(int id, string tipoResponsable, int? tecnicoId, int? proveedorId, DateTime? fechaProgramada, CancellationToken ct)
+    public async Task<IActionResult> Asignar(int id, string tipoResponsable, int? tecnicoId, int? proveedorId,
+        string? proveedorSapCodigo, string? proveedorSapNombre, DateTime? fechaProgramada, CancellationToken ct)
     {
-        var resp = await _tickets.AsignarAsync(id, tipoResponsable, tecnicoId, proveedorId, fechaProgramada, UsuarioId, RolCodigo, ct);
+        var resp = await _tickets.AsignarAsync(id, tipoResponsable, tecnicoId, proveedorId, proveedorSapCodigo, proveedorSapNombre, fechaProgramada, UsuarioId, RolCodigo, ct);
         return Json(new { resp.FiCodigo, resp.FcMensaje, resp.FbSucces, resp.FjData });
+    }
+
+    // Select2 AJAX: artículos SAP (OITM). Mín. 2 letras, máx. 30.
+    // User: "Si la cadena no está configurada... 'SAP no está configurado'"
+    [HttpGet]
+    public async Task<IActionResult> BuscarArticulosSap(string? q, CancellationToken ct)
+    {
+        var r = await _sap.BuscarArticulosAsync(q, ct);
+        if (!r.FbConfigurado)
+            return Json(new { results = Array.Empty<object>(), error = r.FcMensaje ?? "SAP no está configurado" });
+        var results = r.Datos.Select(a => new
+        {
+            id = a.FcCodigo,
+            text = $"{a.FcCodigo} — {a.FcNombre} (stk {a.FnExistencia:0.##})",
+            itemCode = a.FcCodigo,
+            itemName = a.FcNombre,
+            unidad = a.FcUnidad,
+            existencia = a.FnExistencia,
+            costo = a.FnCostoPromedio
+        });
+        return Json(new { results, error = r.FcMensaje });
+    }
+
+    // Select2 AJAX: proveedores SAP (OCRD CardType=S).
+    [HttpGet]
+    public async Task<IActionResult> BuscarProveedoresSap(string? q, CancellationToken ct)
+    {
+        var r = await _sap.BuscarProveedoresAsync(q, ct);
+        if (!r.FbConfigurado)
+            return Json(new { results = Array.Empty<object>(), error = r.FcMensaje ?? "SAP no está configurado" });
+        var results = r.Datos.Select(p => new
+        {
+            id = p.FcCodigo,
+            text = $"{p.FcCodigo} — {p.FcNombre}",
+            cardCode = p.FcCodigo,
+            cardName = p.FcNombre
+        });
+        return Json(new { results, error = r.FcMensaje });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -258,9 +329,9 @@ public class TicketsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> GuardarMaterial(int id, int? materialId, string descripcion, decimal cantidad, string? unidad, decimal costoUnitario, CancellationToken ct)
+    public async Task<IActionResult> GuardarMaterial(int id, int? materialId, string descripcion, decimal cantidad, string? unidad, decimal costoUnitario, string? codigoSap, CancellationToken ct)
     {
-        var resp = await _tickets.GuardarMaterialAsync(materialId, id, descripcion, cantidad, unidad, costoUnitario, UsuarioId, RolCodigo, ct);
+        var resp = await _tickets.GuardarMaterialAsync(materialId, id, descripcion, cantidad, unidad, costoUnitario, codigoSap, UsuarioId, RolCodigo, ct);
         return Json(new { resp.FiCodigo, resp.FcMensaje, resp.FbSucces, resp.FjData });
     }
 
@@ -275,6 +346,14 @@ public class TicketsController : Controller
     public async Task<IActionResult> Encuesta(int id, int calificacion, bool conforme, string? comentario, CancellationToken ct)
     {
         var resp = await _tickets.GuardarEncuestaAsync(id, calificacion, conforme, comentario, UsuarioId, ct);
+        return Json(new { resp.FiCodigo, resp.FcMensaje, resp.FbSucces, resp.FjData });
+    }
+
+    /// <summary>Activa o desactiva el recordatorio diario de SLA vencido (ADMIN, JEFATURA, MANTENIMIENTO).</summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RecordatorioSla(int id, bool desactivar, CancellationToken ct)
+    {
+        var resp = await _tickets.CambiarRecordatorioSlaAsync(id, desactivar, UsuarioId, RolCodigo, ct);
         return Json(new { resp.FiCodigo, resp.FcMensaje, resp.FbSucces, resp.FjData });
     }
 

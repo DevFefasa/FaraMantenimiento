@@ -108,13 +108,17 @@ public class SeguridadServicio
 
     private void LimpiarFallos(string userName) => _cache.Remove(ClaveBloqueo(userName));
 
-    /// <summary>Resultado del login. <c>DebeCrearClave</c> = entró con la clave maestra y no tiene clave propia.</summary>
-    public async Task<(RespuestaSp Cabecera, UsuarioModelo? Usuario, bool DebeCrearClave)> AutenticarAsync(
+    /// <summary>
+    /// Resultado del login.
+    /// <c>DebeCrearClave</c> = entró con clave maestra / temporal.
+    /// <c>EntroPorLocal</c> = método Local o clave maestra (claim EsLocal / Cambiar clave).
+    /// </summary>
+    public async Task<(RespuestaSp Cabecera, UsuarioModelo? Usuario, bool DebeCrearClave, bool EntroPorLocal)> AutenticarAsync(
         string usuario, string contrasena, string? ip, CancellationToken ct = default)
     {
         var userName = NormalizarUsuario(usuario);
         if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrEmpty(contrasena))
-            return (new RespuestaSp { FiCodigo = 400, FcMensaje = "Usuario y contraseña son obligatorios", FbSucces = false }, null, false);
+            return (new RespuestaSp { FiCodigo = 400, FcMensaje = "Usuario y contraseña son obligatorios", FbSucces = false }, null, false, false);
 
         if (EstaBloqueado(userName))
         {
@@ -124,82 +128,137 @@ public class SeguridadServicio
                 FiCodigo = 429,
                 FcMensaje = $"Demasiados intentos fallidos. Intente de nuevo en {VentanaBloqueo.TotalMinutes:0} minutos.",
                 FbSucces = false
-            }, null, false);
+            }, null, false, false);
         }
 
-        var local = await _repo.ObtenerPorLoginAsync(userName, ct);
-        if (local.FbSucces && local.Datos.FirstOrDefault() is { } uLocal)
+        var lookup = await _repo.ObtenerPorLoginAsync(userName, ct);
+        if (lookup.FbSucces && lookup.Datos.FirstOrDefault() is { } encontrado)
         {
-            // Cualquier usuario puede autenticarse con clave local si tiene hash (o clave maestra sin hash).
-            var debeCambiarClave = false;
-            bool? intentoLocal = null;
-            bool ok = false;
-            if (!string.IsNullOrEmpty(uLocal.FcClaveHash))
+            var coincideUsuario = string.Equals(encontrado.FcCampoCoincide, "fcUsuario", StringComparison.OrdinalIgnoreCase)
+                || (string.IsNullOrEmpty(encontrado.FcCampoCoincide)
+                    && string.Equals(encontrado.FcUsuario, userName, StringComparison.OrdinalIgnoreCase));
+            var tieneAd = !string.IsNullOrWhiteSpace(encontrado.FcActiveDirectory);
+
+            if (coincideUsuario)
             {
-                ok = VerificarClave(uLocal.FcClaveHash, contrasena, out var rehash);
-                intentoLocal = true;
-                if (ok && rehash)
-                    await GuardarHashAsync(uLocal, HashClave(contrasena), debeCambiarClave: false, ct);
-                if (ok)
-                    debeCambiarClave = uLocal.FbDebeCambiarClave;
-            }
-            else
-            {
+                if (!string.IsNullOrEmpty(encontrado.FcClaveHash))
+                {
+                    if (VerificarClave(encontrado.FcClaveHash, contrasena, out var rehash))
+                    {
+                        if (rehash)
+                            await GuardarHashAsync(encontrado, HashClave(contrasena), debeCambiarClave: false, ct);
+                        return await LoginOkAsync(encontrado, userName, ip, lookup.FjData,
+                            detalle: encontrado.FbDebeCambiarClave ? "Local (debe cambiar clave)" : "Local",
+                            debeCrearClave: encontrado.FbDebeCambiarClave, entroPorLocal: true, ct);
+                    }
+
+                    if (tieneAd)
+                    {
+                        var adFallback = await IntentarAdAsync(encontrado.FcActiveDirectory!, contrasena, ct);
+                        if (adFallback.ok)
+                            return await LoginOkAsync(encontrado, userName, ip, lookup.FjData,
+                                detalle: $"AD ({encontrado.FcActiveDirectory})",
+                                debeCrearClave: false, entroPorLocal: false, ct);
+                    }
+
+                    RegistrarFallo(userName);
+                    await _repo.RegistrarAccesoAsync(encontrado.FiId, userName, "LOGIN_FAIL", ip, "Clave local incorrecta", ct);
+                    return (new RespuestaSp { FiCodigo = 401, FcMensaje = "Usuario o contraseña incorrectos.", FbSucces = false }, null, false, false);
+                }
+
+                if (tieneAd)
+                {
+                    var adSolo = await IntentarAdAsync(encontrado.FcActiveDirectory!, contrasena, ct);
+                    if (adSolo.ok)
+                        return await LoginOkAsync(encontrado, userName, ip, lookup.FjData,
+                            detalle: $"AD ({encontrado.FcActiveDirectory})",
+                            debeCrearClave: false, entroPorLocal: false, ct);
+
+                    RegistrarFallo(userName);
+                    await _repo.RegistrarAccesoAsync(encontrado.FiId, userName, "LOGIN_FAIL", ip, adSolo.status, ct);
+                    return (new RespuestaSp
+                    {
+                        FiCodigo = adSolo.statusCode == 401 ? 401 : 400,
+                        FcMensaje = string.IsNullOrWhiteSpace(adSolo.message) ? "Usuario o contraseña incorrectos." : adSolo.message!,
+                        FbSucces = false
+                    }, null, false, false);
+                }
+
                 var master = _config["Auth:LocalPassword"];
                 if (!string.IsNullOrEmpty(master) &&
                     CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(contrasena), Encoding.UTF8.GetBytes(master)))
                 {
-                    ok = true;
-                    debeCambiarClave = true;
-                    intentoLocal = true;
-                }
-            }
-
-            if (intentoLocal == true)
-            {
-                if (!ok)
-                {
-                    RegistrarFallo(userName);
-                    await _repo.RegistrarAccesoAsync(uLocal.FiId, userName, "LOGIN_FAIL", ip, "Clave local incorrecta", ct);
-                    return (new RespuestaSp { FiCodigo = 401, FcMensaje = "Usuario o contraseña incorrectos.", FbSucces = false }, null, false);
+                    await _repo.RegistrarAccesoAsync(encontrado.FiId, userName, "CLAVE_MAESTRA", ip, "Uso de la clave maestra; debe crear su clave", ct);
+                    return await LoginOkAsync(encontrado, userName, ip, lookup.FjData,
+                        detalle: "Local con clave maestra (sin clave propia)",
+                        debeCrearClave: true, entroPorLocal: true, ct);
                 }
 
-                LimpiarFallos(userName);
-                await _repo.RegistrarAccesoAsync(uLocal.FiId, userName, "LOGIN_OK", ip,
-                    debeCambiarClave && string.IsNullOrEmpty(uLocal.FcClaveHash)
-                        ? "Local con clave maestra (sin clave propia)"
-                        : (debeCambiarClave ? "Local (debe cambiar clave)" : "Local"), ct);
-                if (debeCambiarClave && string.IsNullOrEmpty(uLocal.FcClaveHash))
-                    await _repo.RegistrarAccesoAsync(uLocal.FiId, userName, "CLAVE_MAESTRA", ip, "Uso de la clave maestra; debe crear su clave", ct);
-                return (new RespuestaSp { FiCodigo = 200, FcMensaje = "OK", FbSucces = true, FjData = local.FjData }, uLocal, debeCambiarClave);
+                RegistrarFallo(userName);
+                await _repo.RegistrarAccesoAsync(encontrado.FiId, userName, "LOGIN_FAIL", ip, "Clave local incorrecta", ct);
+                return (new RespuestaSp { FiCodigo = 401, FcMensaje = "Usuario o contraseña incorrectos.", FbSucces = false }, null, false, false);
             }
-        }
 
-        var ad = await _ad.LoginAsync(userName, contrasena, ct);
-        if (!ad.Success)
-        {
-            if (ad.StatusCode == 401) RegistrarFallo(userName);
-            await _repo.RegistrarAccesoAsync(local.Datos.FirstOrDefault()?.FiId, userName, "LOGIN_FAIL", ip, ad.Status, ct);
+            var adNombre = encontrado.FcActiveDirectory ?? userName;
+            var adMatch = await IntentarAdAsync(adNombre, contrasena, ct);
+            if (adMatch.ok)
+                return await LoginOkAsync(encontrado, userName, ip, lookup.FjData,
+                    detalle: $"AD ({adNombre})",
+                    debeCrearClave: false, entroPorLocal: false, ct);
+
+            RegistrarFallo(userName);
+            await _repo.RegistrarAccesoAsync(encontrado.FiId, userName, "LOGIN_FAIL", ip, adMatch.status, ct);
             return (new RespuestaSp
             {
-                FiCodigo = ad.StatusCode == 401 ? 401 : 400,
-                FcMensaje = string.IsNullOrWhiteSpace(ad.Message) ? ActiveDirectoryApi.MensajePorStatus(ad.Status) : ad.Message,
+                FiCodigo = adMatch.statusCode == 401 ? 401 : 400,
+                FcMensaje = string.IsNullOrWhiteSpace(adMatch.message) ? "Usuario o contraseña incorrectos." : adMatch.message!,
                 FbSucces = false
-            }, null, false);
+            }, null, false, false);
         }
 
-        var alta = await _repo.LoginAdAltaAsync(userName, ad.UserName ?? userName, null, null, null, ct);
-        if (!alta.FbSucces || alta.Datos.FirstOrDefault() is not { } uAd)
-            return (new RespuestaSp { FiCodigo = alta.FiCodigo, FcMensaje = alta.FcMensaje, FbSucces = false }, null, false);
+        var adNuevo = await IntentarAdAsync(userName, contrasena, ct);
+        if (!adNuevo.ok)
+        {
+            if (adNuevo.statusCode == 401) RegistrarFallo(userName);
+            await _repo.RegistrarAccesoAsync(null, userName, "LOGIN_FAIL", ip, adNuevo.status, ct);
+            return (new RespuestaSp
+            {
+                FiCodigo = adNuevo.statusCode == 401 ? 401 : 400,
+                FcMensaje = string.IsNullOrWhiteSpace(adNuevo.message) ? ActiveDirectoryApi.MensajePorStatus(adNuevo.status) : adNuevo.message!,
+                FbSucces = false
+            }, null, false, false);
+        }
 
-        LimpiarFallos(userName);
-        await _repo.RegistrarAccesoAsync(uAd.FiId, userName, "LOGIN_OK", ip, "AD", ct);
-        return (new RespuestaSp { FiCodigo = 200, FcMensaje = "OK", FbSucces = true, FjData = alta.FjData }, uAd, false);
+        var alta = await _repo.LoginAdAltaAsync(userName, adNuevo.displayName ?? userName, null, null, null, ct);
+        if (!alta.FbSucces || alta.Datos.FirstOrDefault() is not { } uAd)
+            return (new RespuestaSp { FiCodigo = alta.FiCodigo, FcMensaje = alta.FcMensaje, FbSucces = false }, null, false, false);
+
+        return await LoginOkAsync(uAd, userName, ip, alta.FjData,
+            detalle: $"AD ({userName})",
+            debeCrearClave: false, entroPorLocal: false, ct);
     }
 
+    private async Task<(bool ok, int statusCode, string? status, string? message, string? displayName)> IntentarAdAsync(
+        string adUser, string contrasena, CancellationToken ct)
+    {
+        var ad = await _ad.LoginAsync(NormalizarUsuario(adUser), contrasena, ct);
+        return (ad.Success, ad.StatusCode, ad.Status, ad.Message, ad.UserName);
+    }
+
+    private async Task<(RespuestaSp Cabecera, UsuarioModelo? Usuario, bool DebeCrearClave, bool EntroPorLocal)> LoginOkAsync(
+        UsuarioModelo u, string userName, string? ip, string? fjData, string detalle, bool debeCrearClave, bool entroPorLocal, CancellationToken ct)
+    {
+        LimpiarFallos(userName);
+        await _repo.RegistrarAccesoAsync(u.FiId, userName, "LOGIN_OK", ip, detalle, ct);
+        return (new RespuestaSp { FiCodigo = 200, FcMensaje = "OK", FbSucces = true, FjData = fjData }, u, debeCrearClave, entroPorLocal);
+    }
+
+    // Callers: AutenticarAsync / CambiarClaveAsync; preserva área/depto del usuario
+    // User instruction: "Cada usuario tiene sucursal, área y departamento"
+    // Callers: AutenticarAsync/CambiarClave; User instruction: "guardar fiJefeId"
     private Task<RespuestaSp> GuardarHashAsync(UsuarioModelo u, string hash, bool debeCambiarClave, CancellationToken ct) =>
-        _repo.GuardarUsuarioAsync(u.FiId, u.FcUsuario, u.FcNombre, u.FcCargo, u.FcCorreo, u.FcTelefono,
-            u.FiRolId, u.FiSucursalId, true, hash, debeCambiarClave, u.FiId, ct);
+        _repo.GuardarUsuarioAsync(u.FiId, u.FcUsuario, u.FcActiveDirectory, u.FcNombre, u.FcCargo, u.FcCorreo, u.FcTelefono,
+            u.FiRolId, u.FiSucursalId, u.FiAreaId, u.FiDepartamentoId, u.FiJefeId, true, hash, debeCambiarClave, u.FiId, ct);
 
     /// <summary>Genera contraseña aleatoria segura (12+ caracteres).</summary>
     public static string GenerarClaveAleatoria(int longitud = 14)
@@ -298,15 +357,18 @@ public class SeguridadServicio
     public Task<RespuestaSp<UsuarioModelo>> ObtenerUsuarioAsync(int fiId, CancellationToken ct = default) =>
         _repo.ObtenerUsuarioAsync(fiId, ct);
 
+    // Callers: SeguridadController.Usuario POST
+    // User instruction: "select2 Jefe inmediato (opcional...)" + guardar fiJefeId
     public async Task<RespuestaSp> GuardarUsuarioAsync(
-        int? fiId, string fcUsuario, string fcNombre, string? fcCorreo, string? fcTelefono,
-        int fiRolId, int? fiSucursalId, string? contrasenaNueva, int fiUsuarioId, CancellationToken ct = default)
+        int? fiId, string fcUsuario, string? fcActiveDirectory, string fcNombre, string? fcCorreo, string? fcTelefono,
+        int fiRolId, int? fiSucursalId, int? fiAreaId, int? fiDepartamentoId, int? fiJefeId, string? contrasenaNueva, int fiUsuarioId, CancellationToken ct = default)
     {
         if (fiRolId <= 0)
             return new RespuestaSp { FiCodigo = 400, FcMensaje = "Seleccione un rol.", FbSucces = false };
 
         var esNuevo = fiId is null or <= 0;
         var userName = NormalizarUsuario(fcUsuario);
+        var adName = string.IsNullOrWhiteSpace(fcActiveDirectory) ? null : NormalizarUsuario(fcActiveDirectory);
         string? hash = null;
         var debeCambiar = false;
         string? claveGenerada = null;
@@ -331,8 +393,8 @@ public class SeguridadServicio
         }
 
         var resp = await _repo.GuardarUsuarioAsync(
-            fiId, userName, fcNombre, null, fcCorreo, fcTelefono,
-            fiRolId, fiSucursalId, fbEsLocal: hash != null || !esNuevo, hash,
+            fiId, userName, adName, fcNombre, null, fcCorreo, fcTelefono,
+            fiRolId, fiSucursalId, fiAreaId, fiDepartamentoId, fiJefeId, fbEsLocal: hash != null || !esNuevo, hash,
             esNuevo || hash != null ? debeCambiar : null, fiUsuarioId, ct);
 
         if (!resp.FbSucces) return resp;

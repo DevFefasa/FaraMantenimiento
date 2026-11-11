@@ -31,7 +31,7 @@ public class AccountController : Controller
     {
         if (!ModelState.IsValid) return View(model);
 
-        var (cab, usuario, debeCrearClave) = await _seguridad.AutenticarAsync(model.Usuario, model.Contrasena, Ip);
+        var (cab, usuario, debeCrearClave, entroPorLocal) = await _seguridad.AutenticarAsync(model.Usuario, model.Contrasena, Ip);
         if (!cab.FbSucces || usuario == null)
         {
             ModelState.AddModelError(string.Empty, string.IsNullOrWhiteSpace(cab.FcMensaje)
@@ -49,7 +49,8 @@ public class AccountController : Controller
             new(AppAccess.FiIdClaim, usuario.FiId.ToString()),
             new(AppAccess.RolIdClaim, usuario.FiRolId.ToString())
         };
-        if (usuario.FbEsLocal || debeCrearClave || usuario.FbDebeCambiarClave || !string.IsNullOrEmpty(usuario.FcClaveHash))
+        // EsLocal solo si entró por clave local o maestra (permite "Cambiar clave").
+        if (entroPorLocal || debeCrearClave)
             claims.Add(new Claim(AppAccess.EsLocalClaim, "1"));
         if (!string.IsNullOrWhiteSpace(usuario.FcCorreo))
             claims.Add(new Claim(ClaimTypes.Email, usuario.FcCorreo));

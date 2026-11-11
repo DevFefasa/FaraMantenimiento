@@ -20,25 +20,25 @@
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small">Recibidos</div>
             @* Callers: DashboardController. Instrucción: responsive 375/768/1366. *@
-            <div class="fs-2 fw-semibold text-primary">@resumen.FiRecibidos</div>
+            <div class="h3 fw-semibold mb-0 text-primary">@resumen.FiRecibidos</div>
         </div></div>
     </div>
     <div class="col-6 col-lg-3">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small">Abiertos / backlog</div>
-            <div class="fs-2 fw-semibold" style="color:#c49200">@resumen.FiBacklog</div>
+            <div class="h3 fw-semibold mb-0" style="color:#c49200">@resumen.FiBacklog</div>
         </div></div>
     </div>
     <div class="col-6 col-lg-3">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small">Cerrados</div>
-            <div class="fs-2 fw-semibold text-primary">@resumen.FiCerrados</div>
+            <div class="h3 fw-semibold mb-0 text-primary">@resumen.FiCerrados</div>
         </div></div>
     </div>
     <div class="col-6 col-lg-3">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small">% SLA solución</div>
-            <div class="fs-2 fw-semibold text-primary">@(resumen.FnPctSlaSolucion?.ToString("0.#") ?? "-")%</div>
+            <div class="h3 fw-semibold mb-0 text-primary">@(resumen.FnPctSlaSolucion?.ToString("0.#") ?? "-")%</div>
         </div></div>
     </div>
     <div class="col-6 col-lg-3">

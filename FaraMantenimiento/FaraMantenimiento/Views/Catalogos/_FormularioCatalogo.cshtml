@@ -73,6 +73,22 @@
         </div>
     }
 
+    @* Callers: CatalogosController.Crear/Editar departamentos; User instruction: "En Departamentos el área se elige con select" *@
+    @if (tipo == "departamentos")
+    {
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fiAreaId">Área</label>
+            <select class="form-select" name="fiAreaId" id="fiAreaId" required>
+                <option value="">Seleccione...</option>
+                @foreach (var a in c.Areas)
+                {
+                    if (Model.FiAreaId == a.FiId) { <option value="@a.FiId" selected>@a.FcNombre</option> }
+                    else { <option value="@a.FiId">@a.FcNombre</option> }
+                }
+            </select>
+        </div>
+    }
+
     @if (tipo == "ubicaciones")
     {
         <div class="col-12 col-md-6">
@@ -258,9 +274,19 @@
                 }
             </select>
         </div>
+        @* Callers: CatalogosController ViewBag.UsuariosSistema; Schema: tecnico.fiUsuarioId
+           User instruction: "select Usuario del sistema (opcional, usuarios activos)" *@
         <div class="col-12 col-md-6">
-            <label class="form-label" for="fiUsuarioId">Usuario Id (opcional)</label>
-            <input type="number" class="form-control" name="fiUsuarioId" id="fiUsuarioId" value="@Model.FiUsuarioId" />
+            <label class="form-label" for="fiUsuarioId">Usuario del sistema</label>
+            <select class="form-select" name="fiUsuarioId" id="fiUsuarioId">
+                <option value="">(Opcional)</option>
+                @foreach (var u in (IEnumerable<FM.OrigenDatos.Modelos.Seguridad.UsuarioModelo>)(ViewBag.UsuariosSistema
+                    ?? Array.Empty<FM.OrigenDatos.Modelos.Seguridad.UsuarioModelo>()))
+                {
+                    if (Model.FiUsuarioId == u.FiId) { <option value="@u.FiId" selected>@u.FcNombre (@u.FcUsuario)</option> }
+                    else { <option value="@u.FiId">@u.FcNombre (@u.FcUsuario)</option> }
+                }
+            </select>
         </div>
     }
 

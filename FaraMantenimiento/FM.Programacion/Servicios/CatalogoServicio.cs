@@ -30,7 +30,9 @@ public class CatalogoServicio
         Estados = MapItems(c.Estados),
         Tecnicos = MapItems(c.Tecnicos),
         Proveedores = MapItems(c.Proveedores),
-        Activos = MapItems(c.Activos)
+        Activos = MapItems(c.Activos),
+        Areas = MapItems(c.Areas),
+        Departamentos = MapItems(c.Departamentos)
     };
 
     private static List<FM.OrigenDatos.Modelos.Catalogo.CatalogoItemModelo> MapItems(IEnumerable<CatalogoItemModelo> src) =>
@@ -41,6 +43,7 @@ public class CatalogoServicio
             FcNombre = x.FcNombre,
             FiRegionId = x.FiRegionId,
             FiSucursalId = x.FiSucursalId,
+            FiAreaId = x.FiAreaId,
             FcTipo = x.FcTipo,
             FbEsPreventivo = x.FbEsPreventivo,
             FiOrden = x.FiOrden ?? 0
@@ -114,6 +117,17 @@ public class CatalogoServicio
     public Task<RespuestaSp> ParametroGuardarAsync(int? id, string clave, string valor, string? descripcion, int usuarioId, CancellationToken ct = default) =>
         _repo.ParametroGuardarAsync(id, clave, valor, descripcion, usuarioId, ct);
     public Task<RespuestaSp> ParametroActivarAsync(int id, bool activo, int usuarioId, CancellationToken ct = default) => _repo.ParametroActivarAsync(id, activo, usuarioId, ct);
+
+    public Task<RespuestaSp<AreaModelo>> AreaListarAsync(bool soloActivos = false, CancellationToken ct = default) => _repo.AreaListarAsync(soloActivos, ct);
+    public Task<RespuestaSp<AreaModelo>> AreaObtenerAsync(int id, CancellationToken ct = default) => _repo.AreaObtenerAsync(id, ct);
+    public Task<RespuestaSp> AreaGuardarAsync(int? id, string codigo, string nombre, int usuarioId, CancellationToken ct = default) => _repo.AreaGuardarAsync(id, codigo, nombre, usuarioId, ct);
+    public Task<RespuestaSp> AreaActivarAsync(int id, bool activo, int usuarioId, CancellationToken ct = default) => _repo.AreaActivarAsync(id, activo, usuarioId, ct);
+
+    public Task<RespuestaSp<DepartamentoModelo>> DepartamentoListarAsync(bool soloActivos = false, int? areaId = null, CancellationToken ct = default) => _repo.DepartamentoListarAsync(soloActivos, areaId, ct);
+    public Task<RespuestaSp<DepartamentoModelo>> DepartamentoObtenerAsync(int id, CancellationToken ct = default) => _repo.DepartamentoObtenerAsync(id, ct);
+    public Task<RespuestaSp> DepartamentoGuardarAsync(int? id, string codigo, string nombre, int areaId, int usuarioId, CancellationToken ct = default) =>
+        _repo.DepartamentoGuardarAsync(id, codigo, nombre, areaId, usuarioId, ct);
+    public Task<RespuestaSp> DepartamentoActivarAsync(int id, bool activo, int usuarioId, CancellationToken ct = default) => _repo.DepartamentoActivarAsync(id, activo, usuarioId, ct);
 
     public byte[] PlantillaActivosExcel()
     {

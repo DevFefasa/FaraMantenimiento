@@ -28,12 +28,12 @@ public class CorreoPendienteServicio
     {
         var cuerpoPlano =
             $"Hola {fcNombre},\n\n" +
-            $"Se creó su usuario en Fara Mantenimiento.\n" +
+            $"Se creó su usuario en FaraFix.\n" +
             $"Usuario: {fcUsuario}\n" +
             $"Contraseña temporal: {clavePlana}\n\n" +
             "Al ingresar con esta contraseña deberá crear una clave personal.\n\n" +
             "Ferretería FARA";
         var cifrado = _protector.Protect(cuerpoPlano);
-        return _repo.GuardarAsync(fcPara, "Bienvenida — Fara Mantenimiento", cifrado, TipoBienvenida, fiCreadoPor, ct);
+        return _repo.GuardarAsync(fcPara, "Bienvenida — FaraFix", cifrado, TipoBienvenida, fiCreadoPor, ct);
     }
 }

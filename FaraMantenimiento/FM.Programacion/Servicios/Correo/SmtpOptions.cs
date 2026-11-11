@@ -16,7 +16,7 @@ public sealed class SmtpOptions
     public string Usuario { get; set; } = "";
     public string Password { get; set; } = "";
     public string Remitente { get; set; } = "";
-    public string NombreRemitente { get; set; } = "Fara Mantenimiento FEFASA";
+    public string NombreRemitente { get; set; } = "FaraFix · FEFASA";
 
     /// <summary>
     /// Buzón de pruebas: si tiene valor, TODO correo va solo ahí (el destinatario real se indica en asunto y cuerpo).

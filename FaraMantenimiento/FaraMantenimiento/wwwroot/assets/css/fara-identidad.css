@@ -1634,3 +1634,184 @@ html[data-layout="vertical"] body[data-sidebartype="mini-sidebar"] .left-sidebar
 @media (max-width: 767.98px) {
   .fara-tabla-movil .fara-badge { white-space: normal; max-width: 100%; text-align: left; }
 }
+
+/* Select2: la "×" para vaciar un campo opcional centrada verticalmente */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear {
+  top: 50% !important;
+  transform: translateY(-50%);
+  margin-top: 0 !important;
+}
+.select2-container--bootstrap-5 .select2-selection--single.select2-selection--clearable {
+  position: relative;
+}
+
+/* styles.css de la plantilla pone "body .select2-container { display:inline }": el bloque interno
+   genera líneas vacías, el contenedor mide 68px en vez de 40px y el buscador se abre separado del campo. */
+body .select2-container {
+  display: block;
+}
+body .select2-container.select2-container--open:not(.select2) {
+  display: block;
+}
+body .select2-container--bootstrap-5 .select2-results__option,
+body .select2-container--bootstrap-5 .select2-search__field {
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 0.9rem !important;
+}
+
+/* Interruptores y casillas con el verde de la marca */
+html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .form-check-input:checked {
+  background-color: #1b5e35;
+  border-color: #1b5e35;
+}
+html[data-bs-theme="light"][data-color-theme="Blue_Theme"] .form-check-input:focus {
+  border-color: #1b5e35;
+  box-shadow: 0 0 0 0.2rem rgba(27, 94, 53, 0.18);
+}
+
+/* ========== Pestañas de la pantalla Tickets (vistas) ========== */
+.fara-tabs-tickets { flex-wrap: nowrap; overflow-x: auto; gap: 0.35rem; padding-bottom: 0.25rem; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.fara-tabs-tickets .nav-link { white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 40px; border: 1px solid #d4e6da; color: #1B5E35; }
+.fara-tabs-tickets .nav-link.active { background: #1B5E35; border-color: #1B5E35; color: #fff; }
+.fara-tab-contador { display: inline-flex; align-items: center; justify-content: center; min-width: 1.4rem; height: 1.4rem; padding: 0 0.35rem;
+  border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: rgba(27, 94, 53, 0.12); color: #1B5E35; }
+.fara-tabs-tickets .nav-link.active .fara-tab-contador { background: rgba(255, 255, 255, 0.25); color: #fff; }
+
+/* ========== Detalle: validar trabajo (estrellas y botones grandes) ========== */
+.fara-estrella {
+  border: 0; background: transparent; padding: 0 0.15rem; line-height: 1;
+  font-size: 2rem; min-width: 44px; min-height: 44px; color: #d1d5db; cursor: pointer;
+  transition: color .1s ease, transform .1s ease;
+}
+.fara-estrella.activa { color: #f59e0b; }
+.fara-estrella:hover, .fara-estrella:focus-visible { transform: scale(1.12); outline: none; }
+.fara-btn-validar { min-height: 56px; font-size: 1rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+@media (max-width: 575.98px) {
+  .fara-estrella { font-size: 1.75rem; min-width: 40px; padding: 0; }
+  #estrellas { gap: 0 !important; }
+}
+/* Campo de fecha + botón "Ahora": que la fecha no se recorte en teléfono */
+.input-group > input[type="datetime-local"], .input-group > input[type="date"] { min-width: 0; }
+@media (max-width: 575.98px) { .fara-btn-ahora { padding-left: .6rem; padding-right: .6rem; } }
+
+/* ========== Menú lateral colapsado (escritorio): solo iconos, también al pasar el mouse ==========
+   La plantilla expande el menú al pasar el mouse, pero aquí el ancho está fijo en 65px, así que el
+   texto salía cortado y los iconos se encogían. Colapsado = iconos de tamaño fijo + nombre en tooltip;
+   los submenús (Seguridad) se abren como desplegable flotante (site.js, .fara-menu-flotante). */
+.left-sidebar .sidebar-link .aside-icon { flex: 0 0 40px; }
+@media (min-width: 1200px) {
+  html[data-layout="vertical"] body[data-sidebartype="mini-sidebar"] .left-sidebar,
+  html[data-layout="vertical"] body[data-sidebartype="mini-sidebar"] .left-sidebar:hover {
+    width: var(--fara-sidebar-mini) !important;
+  }
+  body[data-sidebartype="mini-sidebar"] .left-sidebar .hide-menu,
+  body[data-sidebartype="mini-sidebar"] .left-sidebar:hover .hide-menu,
+  body[data-sidebartype="mini-sidebar"] .left-sidebar .sidebar-nav .has-arrow::after,
+  body[data-sidebartype="mini-sidebar"] .left-sidebar:hover .sidebar-nav .has-arrow::after,
+  body[data-sidebartype="mini-sidebar"] .left-sidebar .first-level {
+    display: none !important;
+  }
+  body[data-sidebartype="mini-sidebar"] .left-sidebar .nav-small-cap,
+  body[data-sidebartype="mini-sidebar"] .left-sidebar:hover .nav-small-cap { text-align: center; }
+  body[data-sidebartype="mini-sidebar"] .left-sidebar .nav-small-cap .nav-small-cap-icon,
+  body[data-sidebartype="mini-sidebar"] .left-sidebar:hover .nav-small-cap .nav-small-cap-icon { display: inline-block !important; }
+  body[data-sidebartype="mini-sidebar"] .left-sidebar .sidebar-link {
+    justify-content: center;
+    width: 40px;
+    padding: 0 !important;
+    margin: 4px auto !important;
+    border-radius: 8px;
+  }
+  body[data-sidebartype="mini-sidebar"] .left-sidebar .sidebar-link::before { display: none !important; }
+  body[data-sidebartype="mini-sidebar"] .left-sidebar .sidebar-link.fara-flotante-abierto {
+    background-color: rgba(27, 94, 53, 0.1);
+  }
+}
+
+/* Desplegable flotante de submenús con el menú colapsado */
+.fara-menu-flotante {
+  position: fixed;
+  z-index: 1080;
+  min-width: 190px;
+  padding: 0.4rem 0;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+.fara-menu-flotante-titulo {
+  padding: 0.35rem 1rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1B5E35;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 0.25rem;
+}
+.fara-menu-flotante a {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0.4rem 1rem;
+  color: #222;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.fara-menu-flotante a:hover,
+.fara-menu-flotante a:focus-visible { background: rgba(27, 94, 53, 0.08); color: #1B5E35; outline: none; }
+.fara-menu-flotante a.active { color: #1B5E35; font-weight: 600; }
+
+/* Campana: como la plantilla (icono de campana + punto que late), sin número encima */
+.fara-alerta-punto {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1B5E35;
+  box-shadow: 0 0 0 2px #fff;
+}
+.fara-alerta-punto::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid #1B5E35;
+  animation: fara-latido 1.2s ease-out infinite;
+}
+@keyframes fara-latido {
+  0% { transform: scale(0.2); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fara-alerta-punto::after { animation: none; opacity: 0; }
+}
+header.topbar .fara-alerta-sla { height: 40px !important; min-height: 40px; }
+/* Logo FaraFix (más ancho que el de FEFASA): que no se salga del menú ni del login */
+.left-sidebar .fara-logo-full { max-width: 100%; height: auto; }
+.left-sidebar .brand-logo .logo-img { min-width: 0; flex: 1 1 auto; }
+.fara-login-logo { max-width: 280px; }
+
+/* ========== Pie de página pegado abajo ==========
+   Si el contenido es corto, el pie queda al fondo de la ventana; si es largo, va después del contenido
+   (no se encima). #main-wrapper tiene 20px de relleno arriba/abajo (10px en pantallas < 992px). */
+html[data-layout="vertical"] .page-wrapper,
+html[data-layout="vertical"] .page-wrapper .body-wrapper { min-height: calc(100vh - 40px); }
+html[data-layout="vertical"] .page-wrapper .body-wrapper > .container-fluid {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 40px);
+}
+html[data-layout="vertical"] .page-wrapper .body-wrapper > .container-fluid > .fara-footer {
+  margin-top: auto;
+  padding-top: 1.5rem;
+}
+@media (max-width: 991.98px) {
+  html[data-layout="vertical"] .page-wrapper,
+  html[data-layout="vertical"] .page-wrapper .body-wrapper,
+  html[data-layout="vertical"] .page-wrapper .body-wrapper > .container-fluid { min-height: calc(100vh - 20px); }
+}

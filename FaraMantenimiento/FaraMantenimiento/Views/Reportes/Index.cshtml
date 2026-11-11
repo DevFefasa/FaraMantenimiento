@@ -14,6 +14,8 @@
         if (filtro.FdHasta.HasValue) qs.Add("FdHasta=" + filtro.FdHasta.Value.ToString("yyyy-MM-dd"));
         if (filtro.FiRegionId.HasValue) qs.Add("FiRegionId=" + filtro.FiRegionId);
         if (filtro.FiSucursalId.HasValue) qs.Add("FiSucursalId=" + filtro.FiSucursalId);
+        if (filtro.FiAreaId.HasValue) qs.Add("FiAreaId=" + filtro.FiAreaId);
+        if (filtro.FiDepartamentoId.HasValue) qs.Add("FiDepartamentoId=" + filtro.FiDepartamentoId);
         if (filtro.FiTipoMantenimientoId.HasValue) qs.Add("FiTipoMantenimientoId=" + filtro.FiTipoMantenimientoId);
         if (filtro.FiCategoriaId.HasValue) qs.Add("FiCategoriaId=" + filtro.FiCategoriaId);
         if (filtro.FiPrioridadId.HasValue) qs.Add("FiPrioridadId=" + filtro.FiPrioridadId);
@@ -32,6 +34,7 @@
         <a class="btn btn-outline-primary" asp-action="ExportarExcel" asp-route-indicador="@pestana"
            asp-route-FdDesde="@filtro.FdDesde?.ToString("yyyy-MM-dd")" asp-route-FdHasta="@filtro.FdHasta?.ToString("yyyy-MM-dd")"
            asp-route-FiRegionId="@filtro.FiRegionId" asp-route-FiSucursalId="@filtro.FiSucursalId"
+           asp-route-FiAreaId="@filtro.FiAreaId" asp-route-FiDepartamentoId="@filtro.FiDepartamentoId"
            asp-route-FiTipoMantenimientoId="@filtro.FiTipoMantenimientoId" asp-route-FiCategoriaId="@filtro.FiCategoriaId"
            asp-route-FiPrioridadId="@filtro.FiPrioridadId" asp-route-FiEstadoId="@filtro.FiEstadoId"
            asp-route-FiTecnicoId="@filtro.FiTecnicoId" asp-route-FiProveedorId="@filtro.FiProveedorId">
@@ -40,6 +43,7 @@
         <a class="btn btn-outline-danger" asp-action="ExportarPdf" asp-route-indicador="@pestana"
            asp-route-FdDesde="@filtro.FdDesde?.ToString("yyyy-MM-dd")" asp-route-FdHasta="@filtro.FdHasta?.ToString("yyyy-MM-dd")"
            asp-route-FiRegionId="@filtro.FiRegionId" asp-route-FiSucursalId="@filtro.FiSucursalId"
+           asp-route-FiAreaId="@filtro.FiAreaId" asp-route-FiDepartamentoId="@filtro.FiDepartamentoId"
            asp-route-FiTipoMantenimientoId="@filtro.FiTipoMantenimientoId" asp-route-FiCategoriaId="@filtro.FiCategoriaId"
            asp-route-FiPrioridadId="@filtro.FiPrioridadId" asp-route-FiEstadoId="@filtro.FiEstadoId"
            asp-route-FiTecnicoId="@filtro.FiTecnicoId" asp-route-FiProveedorId="@filtro.FiProveedorId">

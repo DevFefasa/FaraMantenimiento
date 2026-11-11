@@ -43,6 +43,10 @@ public class CatalogoRepositorio
         combos.MotivosEspera = (await multi.ReadAsync<CatalogoItemModelo>()).AsList();
         combos.Proveedores = (await multi.ReadAsync<CatalogoItemModelo>()).AsList();
         combos.Tecnicos = (await multi.ReadAsync<CatalogoItemModelo>()).AsList();
+        // Callers: Seguridad/_FormularioUsuario; Catalogos departamentos; Reportes/_Filtros
+        // User instruction: "departamento filtrado por el área elegida"; combos Areas/Departamentos
+        combos.Areas = (await multi.ReadAsync<CatalogoItemModelo>()).AsList();
+        combos.Departamentos = (await multi.ReadAsync<CatalogoItemModelo>()).AsList();
         return (cab, combos);
     }
 
@@ -153,4 +157,22 @@ public class CatalogoRepositorio
         _sp.EjecutarAsync("sp_catalogo_parametro_guardar", new { p_fiId = id ?? 0, p_fcClave = clave, p_fcValor = valor, p_fcDescripcion = descripcion, p_fiUsuarioId = usuarioId }, ct);
     public Task<RespuestaSp> ParametroActivarAsync(int id, bool activo, int usuarioId, CancellationToken ct = default) =>
         _sp.EjecutarAsync("sp_catalogo_parametro_activar", new { p_fiId = id, p_fbActivo = activo ? 1 : 0, p_fiUsuarioId = usuarioId }, ct);
+
+    public Task<RespuestaSp<AreaModelo>> AreaListarAsync(bool soloActivos, CancellationToken ct = default) =>
+        _sp.EjecutarAsync<AreaModelo>("sp_catalogo_area_listar", new { p_fbSoloActivos = soloActivos ? 1 : 0 }, ct);
+    public Task<RespuestaSp<AreaModelo>> AreaObtenerAsync(int id, CancellationToken ct = default) =>
+        _sp.EjecutarAsync<AreaModelo>("sp_catalogo_area_obtener", new { p_fiId = id }, ct);
+    public Task<RespuestaSp> AreaGuardarAsync(int? id, string codigo, string nombre, int usuarioId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync("sp_catalogo_area_guardar", new { p_fiId = id ?? 0, p_fcCodigo = codigo, p_fcNombre = nombre, p_fiUsuarioId = usuarioId }, ct);
+    public Task<RespuestaSp> AreaActivarAsync(int id, bool activo, int usuarioId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync("sp_catalogo_area_activar", new { p_fiId = id, p_fbActivo = activo ? 1 : 0, p_fiUsuarioId = usuarioId }, ct);
+
+    public Task<RespuestaSp<DepartamentoModelo>> DepartamentoListarAsync(bool soloActivos, int? areaId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync<DepartamentoModelo>("sp_catalogo_departamento_listar", new { p_fbSoloActivos = soloActivos ? 1 : 0, p_fiAreaId = areaId }, ct);
+    public Task<RespuestaSp<DepartamentoModelo>> DepartamentoObtenerAsync(int id, CancellationToken ct = default) =>
+        _sp.EjecutarAsync<DepartamentoModelo>("sp_catalogo_departamento_obtener", new { p_fiId = id }, ct);
+    public Task<RespuestaSp> DepartamentoGuardarAsync(int? id, string codigo, string nombre, int areaId, int usuarioId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync("sp_catalogo_departamento_guardar", new { p_fiId = id ?? 0, p_fcCodigo = codigo, p_fcNombre = nombre, p_fiAreaId = areaId, p_fiUsuarioId = usuarioId }, ct);
+    public Task<RespuestaSp> DepartamentoActivarAsync(int id, bool activo, int usuarioId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync("sp_catalogo_departamento_activar", new { p_fiId = id, p_fbActivo = activo ? 1 : 0, p_fiUsuarioId = usuarioId }, ct);
 }

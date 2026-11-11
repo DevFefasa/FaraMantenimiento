@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace FM.Programacion.Servicios.Correo;
 
 /// <summary>
-/// Correos de Fara Mantenimiento.
+/// Correos de FaraFix.
 /// Encolar: se arma el correo (PlantillaCorreo), se cifra con Data Protection (propósito "FaraMantenimiento.Correo")
 /// y se guarda en correopendiente. Los métodos Encolar* nunca lanzan excepción: un fallo se registra en el log
 /// y la operación del ticket sigue.

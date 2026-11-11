@@ -35,15 +35,18 @@
 <thead><tr>
 <th class="fara-col-accion">Acciones</th>
 @switch (tipo) {
-    case "regiones": <th>Código</th><th>Nombre</th><th>Estado</th> break;
+    case "regiones": case "areas": <th>Código</th><th>Nombre</th><th>Estado</th> break;
     case "sucursales": <th>Código</th><th>Nombre</th><th>Tipo</th><th>Región</th><th>Estado</th> break;
+    case "departamentos": <th>Código</th><th>Nombre</th><th>Área</th><th>Estado</th> break;
     case "ubicaciones": <th>Código</th><th>Nombre</th><th>Sucursal</th><th>Estado</th> break;
     case "activos": <th>Código</th><th>Nombre</th><th>Sucursal</th><th>Categoría</th><th>Estado</th> break;
     case "tipos": case "categorias": case "motivos": <th>Código</th><th>Nombre</th><th>Orden</th><th>Estado</th> break;
     case "prioridades": <th>Código</th><th>Nombre</th><th>Color</th><th>Resp. (h)</th><th>Sol. (h)</th><th>Estado</th> break;
     case "estados": <th>Código</th><th>Nombre</th><th>Color</th><th>Orden</th><th>Estado</th> break;
     case "proveedores": <th>Código</th><th>Nombre</th><th>Especialidad</th><th>Estado</th> break;
-    case "tecnicos": <th>Código</th><th>Nombre</th><th>Categoría</th><th>Estado</th> break;
+    @* Callers: CatalogosController.Entidad; Schema: TecnicoModelo.FcUsuarioNombre
+       User instruction: "muéstralo en la lista" *@
+    case "tecnicos": <th>Código</th><th>Nombre</th><th>Categoría</th><th>Usuario</th><th>Estado</th> break;
     case "parametros": <th>Clave</th><th>Valor</th><th>Descripción</th><th>Estado</th> break;
 }
 </tr></thead>
@@ -63,11 +66,16 @@
 </td>
 @switch (tipo) {
     case "regiones":
+    case "areas":
         <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td>
         <td data-label="Estado">@if (activo) { <span class="fara-badge fara-badge-activo">Activo</span> } else { <span class="fara-badge fara-badge-inactivo">Inactivo</span> }</td>
         break;
     case "sucursales":
         <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Tipo">@row.FcTipo</td><td data-label="Región">@row.FcRegionNombre</td>
+        <td data-label="Estado">@if (activo) { <span class="fara-badge fara-badge-activo">Activo</span> } else { <span class="fara-badge fara-badge-inactivo">Inactivo</span> }</td>
+        break;
+    case "departamentos":
+        <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Área">@row.FcAreaNombre</td>
         <td data-label="Estado">@if (activo) { <span class="fara-badge fara-badge-activo">Activo</span> } else { <span class="fara-badge fara-badge-inactivo">Inactivo</span> }</td>
         break;
     case "ubicaciones":
@@ -100,6 +108,7 @@
         break;
     case "tecnicos":
         <td data-label="Código">@row.FcCodigo</td><td data-label="Nombre">@row.FcNombre</td><td data-label="Categoría">@row.FcCategoriaNombre</td>
+        <td data-label="Usuario">@row.FcUsuarioNombre</td>
         <td data-label="Estado">@if (activo) { <span class="fara-badge fara-badge-activo">Activo</span> } else { <span class="fara-badge fara-badge-inactivo">Inactivo</span> }</td>
         break;
     case "parametros":

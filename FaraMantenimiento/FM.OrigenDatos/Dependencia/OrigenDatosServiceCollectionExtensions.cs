@@ -31,6 +31,9 @@ public static class OrigenDatosServiceCollectionExtensions
         services.AddScoped<TicketRepositorio>();
         services.AddScoped<ReporteRepositorio>();
         services.AddScoped<PreventivoRepositorio>();
+        // Callers: SapServicio (Programacion). API: DI SapHanaRepositorio. Schema: ConnectionStrings:SapHana, Sap:Esquema.
+        // Confirm: no AddScoped SapHana previo. User: "Copia el patrón... FM.OrigenDatos repositorio SAP, FM.Programacion servicio"
+        services.AddScoped<SapHanaRepositorio>();
         return services;
     }
 }

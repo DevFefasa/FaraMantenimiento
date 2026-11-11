@@ -10,8 +10,8 @@
 <aside class="left-sidebar with-vertical">
     <div class="brand-logo d-flex align-items-center justify-content-between">
         <a asp-controller="Home" asp-action="Index" class="text-nowrap logo-img d-flex align-items-center gap-2">
-            <img src="~/assets/images/FefasaLogo.png" alt="FEFASA" class="fara-logo-full dark-logo" asp-append-version="true" />
-            <img src="~/assets/images/fara-icono.png" alt="FEFASA" class="fara-logo-icon" asp-append-version="true" />
+            <img src="~/assets/images/FaraFixLogo.png" alt="FaraFix" class="fara-logo-full dark-logo" asp-append-version="true" />
+            <img src="~/assets/images/fara-icono.png" alt="FaraFix" class="fara-logo-icon" asp-append-version="true" />
         </a>
         <a href="javascript:void(0)" class="sidebartoggler ms-auto text-decoration-none fs-5 d-block d-xl-none"
            aria-label="Cerrar menú">
@@ -38,63 +38,19 @@
                     </li>
                 }
 
-                <li class="nav-small-cap">
-                    <i class="ti ti-dots nav-small-cap-icon fs-5"></i>
-                    <span class="hide-menu">Tickets</span>
-                </li>
-
-                @if (Tiene("TICKET_CREAR"))
+                @* Una sola entrada "Tickets" (pestañas dentro de /Tickets) para quien tenga algún permiso TICKET_*. *@
+                @if (User.Claims.Any(c => c.Type == "permiso" && c.Value.StartsWith("TICKET_")))
                 {
-                    <li class="sidebar-item">
-                        <a class="sidebar-link primary-hover-bg" href="/Tickets/Crear" aria-expanded="false">
-                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
-                                <i class="ti ti-plus fs-6"></i>
-                            </span>
-                            <span class="hide-menu ps-1">Nuevo ticket</span>
-                        </a>
+                    <li class="nav-small-cap">
+                        <i class="ti ti-dots nav-small-cap-icon fs-5"></i>
+                        <span class="hide-menu">Tickets</span>
                     </li>
-                }
-                @if (Tiene("TICKET_MIOS"))
-                {
-                    <li class="sidebar-item">
-                        <a class="sidebar-link primary-hover-bg" href="/Tickets/Mios" aria-expanded="false">
-                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
-                                <i class="ti ti-clipboard-list fs-6"></i>
-                            </span>
-                            <span class="hide-menu ps-1">Mis tickets</span>
-                        </a>
-                    </li>
-                }
-                @if (Tiene("TICKET_BANDEJA"))
-                {
-                    <li class="sidebar-item">
-                        <a class="sidebar-link primary-hover-bg" href="/Tickets/Bandeja" aria-expanded="false">
-                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
-                                <i class="ti ti-inbox fs-6"></i>
-                            </span>
-                            <span class="hide-menu ps-1">Bandeja mantenimiento</span>
-                        </a>
-                    </li>
-                }
-                @if (Tiene("TICKET_APROBACION"))
-                {
-                    <li class="sidebar-item">
-                        <a class="sidebar-link primary-hover-bg" href="/Tickets/Aprobacion" aria-expanded="false">
-                            <span class="aside-icon p-2 bg-primary-subtle rounded-1">
-                                <i class="ti ti-checkbox fs-6"></i>
-                            </span>
-                            <span class="hide-menu ps-1">Aprobaciones</span>
-                        </a>
-                    </li>
-                }
-                @if (Tiene("TICKET_TODOS"))
-                {
                     <li class="sidebar-item">
                         <a class="sidebar-link primary-hover-bg" href="/Tickets" aria-expanded="false">
                             <span class="aside-icon p-2 bg-primary-subtle rounded-1">
-                                <i class="ti ti-list-details fs-6"></i>
+                                <i class="ti ti-ticket fs-6"></i>
                             </span>
-                            <span class="hide-menu ps-1">Todos los tickets</span>
+                            <span class="hide-menu ps-1">Tickets</span>
                         </a>
                     </li>
                 }
@@ -133,13 +89,32 @@
 
                 @if (Tiene("CATALOGOS"))
                 {
+                    var catalogos = new (string Tipo, string Titulo)[]
+                    {
+                        ("sucursales", "Sucursales"), ("regiones", "Regiones"), ("areas", "Áreas"),
+                        ("departamentos", "Departamentos"), ("ubicaciones", "Ubicaciones"), ("activos", "Activos"),
+                        ("tipos", "Tipos de mantenimiento"), ("categorias", "Categorías"), ("prioridades", "Prioridades"),
+                        ("estados", "Estados"), ("motivos", "Motivos de espera"), ("proveedores", "Proveedores"),
+                        ("tecnicos", "Técnicos"), ("parametros", "Parámetros")
+                    };
                     <li class="sidebar-item">
-                        <a class="sidebar-link primary-hover-bg" href="/Catalogos" aria-expanded="false">
+                        <a class="sidebar-link has-arrow primary-hover-bg" href="javascript:void(0)" aria-expanded="false">
                             <span class="aside-icon p-2 bg-primary-subtle rounded-1">
                                 <i class="ti ti-books fs-6"></i>
                             </span>
                             <span class="hide-menu ps-1">Catálogos</span>
                         </a>
+                        <ul aria-expanded="false" class="collapse first-level">
+                            @foreach (var c in catalogos)
+                            {
+                                <li class="sidebar-item">
+                                    <a href="/Catalogos/Entidad?tipo=@c.Tipo" class="sidebar-link">
+                                        <span class="sidebar-icon"></span>
+                                        <span class="hide-menu">@c.Titulo</span>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
                     </li>
                 }
                 @if (Tiene("REPORTES"))

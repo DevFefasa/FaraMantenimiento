@@ -1,44 +1,91 @@
 @model FaraMantenimiento.ViewModels.Tickets.TicketListaViewModel
+@using FaraMantenimiento.Controllers
 @{
-    ViewData["Title"] = Model.Titulo;
+    ViewData["Title"] = "Tickets";
     var combos = Model.Combos;
+    var vista = Model.Modo;
+    var estadoSel = (ViewBag.Estado as string ?? "").ToUpperInvariant();
     // Solo colores hex del catálogo (evita inyectar CSS en el atributo style).
     static string ColorSeguro(string? c) =>
         !string.IsNullOrWhiteSpace(c) && System.Text.RegularExpressions.Regex.IsMatch(c, "^#[0-9a-fA-F]{3,8}$") ? c : "#6c757d";
-    // Exportar con los mismos filtros de la pantalla (query string actual + modo).
-    var qs = Context.Request.QueryString.HasValue ? Context.Request.QueryString.Value + "&" : "?";
-    var urlExportar = $"/Tickets/Exportar{qs}modo={Uri.EscapeDataString(Model.Modo)}";
+    // Semáforo de SLA (lo calcula sp_ticket_listar_vista según el límite de solución).
+    static string TextoSla(string sem) => sem switch
+    {
+        "rojo" => "SLA vencido",
+        "amarillo" => "SLA por vencer (usado 75% o más del tiempo)",
+        "gris" => "Ticket cerrado",
+        _ => "SLA en tiempo"
+    };
+    // Exportar con los mismos filtros de la pantalla (query actual sin vista/modo + vista actual).
+    var qsPartes = Context.Request.Query
+        .Where(kv => !string.Equals(kv.Key, "vista", StringComparison.OrdinalIgnoreCase) && !string.Equals(kv.Key, "modo", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(kv => kv.Value.Select(val => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(val ?? "")}"))
+        .Append($"vista={Uri.EscapeDataString(vista)}");
+    var urlExportar = "/Tickets/Exportar?" + string.Join("&", qsPartes);
+    var pestanas = TicketsController.Vistas
+        .Select(x => (x.Vista, x.Corto, Info: Model.Vistas.FirstOrDefault(r => r.FcVista == x.Vista)))
+        .Where(x => x.Info?.FbDisponible == true)
+        .ToList();
+    var filtrosAtender = new[] { ("", "Abiertos"), ("ASIGNADO", "Asignados"), ("EN_PROCESO", "En proceso"), ("EN_ESPERA", "En espera"), ("RESUELTO", "Resueltos") };
 }
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h1 class="h4 mb-0">@Model.Titulo</h1>
+    <h1 class="h4 mb-0">Tickets</h1>
     <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-outline-success" href="@urlExportar" style="min-height:40px">
             <i class="ti ti-file-spreadsheet me-1"></i>Exportar Excel
         </a>
         @if (User.HasClaim("permiso", "TICKET_CREAR"))
         {
-            <a class="btn btn-primary" asp-action="Crear" style="min-height:40px">Nuevo ticket</a>
+            <a class="btn btn-primary" asp-action="Crear" style="min-height:40px"><i class="ti ti-plus me-1"></i>Nuevo ticket</a>
         }
     </div>
 </div>
 
+@* Pestañas (vistas). En teléfono hacen scroll horizontal. El contador son los tickets abiertos de cada pestaña. *@
+<ul class="nav nav-pills fara-tabs-tickets mb-3" role="tablist" aria-label="Vistas de tickets">
+    @foreach (var p in pestanas)
+    {
+        var activa = p.Vista == vista;
+        <li class="nav-item" role="presentation">
+            <a class="nav-link @(activa ? "active" : "")" href="/Tickets?vista=@p.Vista" role="tab" aria-selected="@(activa ? "true" : "false")"
+               title="@p.Info!.FiAbiertos abiertos">
+                @p.Corto
+                @if (p.Info!.FiAbiertos > 0)
+                {
+                    <span class="fara-tab-contador">@p.Info.FiAbiertos</span>
+                }
+            </a>
+        </li>
+    }
+</ul>
+<script>
+    // En teléfono la pestaña activa puede quedar fuera de la vista: se desplaza la tira hasta ella.
+    (function () {
+        var tira = document.querySelector('.fara-tabs-tickets');
+        var activa = tira && tira.querySelector('.nav-link.active');
+        if (activa) tira.scrollLeft = activa.offsetLeft - tira.offsetLeft - 16;
+    })();
+</script>
+<h2 class="h6 text-muted mb-3">@Model.Titulo</h2>
 
-@if (Model.Modo == "bandeja")
+@if (vista == "atender")
 {
     <div class="d-flex flex-wrap gap-2 mb-3">
-        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" style="min-height:40px">Abiertos</a>
-        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" asp-route-estado="ASIGNADO" style="min-height:40px">Asignados</a>
-        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" asp-route-estado="EN_PROCESO" style="min-height:40px">En proceso</a>
-        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" asp-route-estado="EN_ESPERA" style="min-height:40px">En espera</a>
-        <a class="btn btn-sm btn-outline-secondary" asp-action="Bandeja" asp-route-estado="RESUELTO" style="min-height:40px">Resueltos</a>
+        @foreach (var (cod, txt) in filtrosAtender)
+        {
+            var sel = cod == estadoSel;
+            <a class="btn btn-sm @(sel ? "btn-primary" : "btn-outline-secondary")" style="min-height:40px"
+               href="/Tickets?vista=atender@(cod == "" ? "" : "&estado=" + cod)">@txt</a>
+        }
     </div>
 }
 
-@* Callers: TicketsController Index/Mios/Bandeja/Aprobacion. Schema: TicketListaViewModel + Combos.
+@* Filtros de la pestaña "Todos". Schema: TicketListaViewModel + Combos.
    Instrucción: «revisa a 375px, 768px y 1366px… Index… Corrige problemas de diseño/responsive solo en las vistas». *@
 @if (Model.Modo == "todos" && combos != null)
 {
     <form method="get" class="row g-2 mb-3 fara-filtros-tickets">
+        <input type="hidden" name="vista" value="todos" />
         <div class="col-12 col-md-3">
             <label class="form-label d-md-none">Buscar</label>
             <input name="FcTexto" value="@Model.Filtro.FcTexto" class="form-control" placeholder="Buscar..." />
@@ -100,18 +147,25 @@
     </form>
 }
 
+<div class="d-flex flex-wrap gap-3 small text-muted mb-2" aria-label="Significado del SLA">
+    <span><span class="fara-semaforo fara-semaforo-verde me-1"></span>En tiempo</span>
+    <span><span class="fara-semaforo fara-semaforo-amarillo me-1"></span>Por vencer</span>
+    <span><span class="fara-semaforo fara-semaforo-rojo me-1"></span>Vencido</span>
+    <span><span class="fara-semaforo fara-semaforo-gris me-1"></span>Cerrado</span>
+</div>
 <div class="table-responsive">
     <table class="table table-hover align-middle fara-tabla-movil" data-fara-tabla>
         <thead class="custom-header">
             <tr>
                 <th class="fara-col-accion">Acciones</th>
-                <th>SLA</th>
-                <th>Número</th>
-                <th>Fecha</th>
-                <th>Sucursal</th>
-                <th>Estado</th>
-                <th>Prioridad</th>
-                <th>Solicitante</th>
+                <th class="text-center">SLA</th>
+                <th class="text-center">Número</th>
+                <th class="text-center">Fecha</th>
+                <th class="text-center">Sucursal</th>
+                <th class="text-center">Estado</th>
+                <th class="text-center">Prioridad</th>
+                <th class="text-center">Responsable</th>
+                <th class="text-center">Solicitante</th>
             </tr>
         </thead>
         <tbody>
@@ -120,21 +174,36 @@
             var sem = (t.FcSemaforoSla ?? "VERDE").ToLowerInvariant();
             <tr>
                 <td class="fara-col-accion"><a class="btn btn-sm btn-outline-primary" asp-action="Detalle" asp-route-id="@t.FiId" style="min-height:40px">Ver</a></td>
-                <td data-label="SLA"><span class="fara-semaforo fara-semaforo-@sem" title="@t.FcSemaforoSla"></span></td>
-                <td data-label="Número">
+                <td data-label="SLA" class="text-md-center"><span class="fara-semaforo fara-semaforo-@sem" title="@TextoSla(sem)" aria-label="@TextoSla(sem)"></span></td>
+                <td data-label="Número" class="text-md-center">
                     <a asp-action="Detalle" asp-route-id="@t.FiId">@t.FcNumero</a>
                     @if (t.FbReincidencia) { <span class="fara-badge" style="--fara-badge-color:#d97706">Reincidencia</span> }
                 </td>
-                <td data-label="Fecha">@t.FdFechaIngreso.ToString("dd/MM/yyyy HH:mm")</td>
-                <td data-label="Sucursal">@t.FcSucursalNombre</td>
-                <td data-label="Estado"><span class="fara-badge" style="--fara-badge-color:@ColorSeguro(t.FcEstadoColor)">@t.FcEstadoNombre</span></td>
-                <td data-label="Prioridad"><span class="fara-badge" style="--fara-badge-color:@ColorSeguro(t.FcPrioridadColor)">@t.FcPrioridadNombre</span></td>
-                <td data-label="Solicitante">@t.FcSolicitanteNombre</td>
+                <td data-label="Fecha" class="text-md-center">@t.FdFechaIngreso.ToString("dd/MM/yyyy HH:mm")</td>
+                <td data-label="Sucursal" class="text-md-center">@t.FcSucursalNombre</td>
+                <td data-label="Estado" class="text-md-center"><span class="fara-badge" style="--fara-badge-color:@ColorSeguro(t.FcEstadoColor)">@t.FcEstadoNombre</span></td>
+                <td data-label="Prioridad" class="text-md-center"><span class="fara-badge" style="--fara-badge-color:@ColorSeguro(t.FcPrioridadColor)">@t.FcPrioridadNombre</span></td>
+                @{
+                    var esProveedor = t.FcTipoResponsable == "PROVEEDOR";
+                    var responsable = esProveedor ? t.FcProveedorNombre : t.FcTecnicoNombre;
+                }
+                <td data-label="Responsable" class="text-md-center">
+                    @if (string.IsNullOrWhiteSpace(responsable))
+                    {
+                        <span class="text-muted">Sin asignar</span>
+                    }
+                    else
+                    {
+                        @responsable
+                        @if (esProveedor) { <span class="small text-muted d-block">Proveedor externo</span> }
+                    }
+                </td>
+                <td data-label="Solicitante" class="text-md-center">@t.FcSolicitanteNombre</td>
             </tr>
         }
         @if (!Model.Items.Any())
         {
-            <tr><td colspan="8" class="text-muted">No hay tickets para mostrar.</td></tr>
+            <tr><td colspan="9" class="text-muted">No hay tickets para mostrar.</td></tr>
         }
         </tbody>
     </table>

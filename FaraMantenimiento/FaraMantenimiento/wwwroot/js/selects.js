@@ -72,7 +72,8 @@
         var allowClear = true;
         if ($el.data('allow-clear') === false || $el.data('allow-clear') === 'false') {
             allowClear = false;
-        } else if (!hasEmptyOption($el)) {
+        } else if (!hasEmptyOption($el) || $el.prop('required')) {
+            // Un campo obligatorio no ofrece la "×" para vaciarlo
             allowClear = false;
         }
 

@@ -46,13 +46,18 @@ public class TicketRepositorio
             p_fiUsuarioId = fiUsuarioId
         }, ct);
 
-    public Task<RespuestaSp> AsignarAsync(int fiTicketId, string fcTipoResponsable, int? fiTecnicoId, int? fiProveedorId, DateTime? fdFechaProgramada, int fiUsuarioId, CancellationToken ct = default) =>
+    // Callers: TicketServicio.AsignarAsync. API: sp_ticket_asignar (+SAP). Schema: mig 92.
+    // User: "se busca el proveedor SAP y se guarda código + nombre"
+    public Task<RespuestaSp> AsignarAsync(int fiTicketId, string fcTipoResponsable, int? fiTecnicoId, int? fiProveedorId,
+        string? fcProveedorSapCodigo, string? fcProveedorSapNombre, DateTime? fdFechaProgramada, int fiUsuarioId, CancellationToken ct = default) =>
         _sp.EjecutarAsync("sp_ticket_asignar", new
         {
             p_fiTicketId = fiTicketId,
             p_fcTipoResponsable = fcTipoResponsable,
             p_fiTecnicoId = fiTecnicoId,
             p_fiProveedorId = fiProveedorId,
+            p_fcProveedorSapCodigo = fcProveedorSapCodigo,
+            p_fcProveedorSapNombre = fcProveedorSapNombre,
             p_fdFechaProgramada = fdFechaProgramada,
             p_fiUsuarioId = fiUsuarioId
         }, ct);
@@ -79,7 +84,9 @@ public class TicketRepositorio
             p_fiUsuarioId = fiUsuarioId
         }, ct);
 
-    public Task<RespuestaSp> GuardarMaterialAsync(int? fiId, int fiTicketId, string fcDescripcion, decimal fnCantidad, string? fcUnidad, decimal fnCostoUnitario, int fiUsuarioId, CancellationToken ct = default) =>
+    // Callers: TicketServicio.GuardarMaterialAsync. API: sp_ticket_material_guardar (+fcCodigoSap). Schema: mig 91.
+    // User: "se guarda código SAP + descripción + cantidad + costo unitario"
+    public Task<RespuestaSp> GuardarMaterialAsync(int? fiId, int fiTicketId, string fcDescripcion, decimal fnCantidad, string? fcUnidad, decimal fnCostoUnitario, string? fcCodigoSap, int fiUsuarioId, CancellationToken ct = default) =>
         _sp.EjecutarAsync("sp_ticket_material_guardar", new
         {
             p_fiId = fiId ?? 0,
@@ -88,6 +95,7 @@ public class TicketRepositorio
             p_fnCantidad = fnCantidad,
             p_fcUnidad = fcUnidad,
             p_fnCostoUnitario = fnCostoUnitario,
+            p_fcCodigoSap = fcCodigoSap,
             p_fiUsuarioId = fiUsuarioId
         }, ct);
 
@@ -156,4 +164,26 @@ public class TicketRepositorio
         {
             p_fbSoloNoNotificadas = soloNoNotificadas ? 1 : 0
         }, ct);
+
+    // Recordatorio diario de SLA vencido (migración 93).
+    public Task<RespuestaSp<TicketRecordatorioSlaModelo>> RecordatorioSlaObtenerAsync(int fiTicketId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync<TicketRecordatorioSlaModelo>("sp_ticket_recordatorio_sla_obtener", new { p_fiTicketId = fiTicketId }, ct);
+
+    public Task<RespuestaSp> RecordatorioSlaCambiarAsync(int fiTicketId, bool sinRecordatorio, int fiUsuarioId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync("sp_ticket_recordatorio_sla_cambiar", new
+        {
+            p_fiTicketId = fiTicketId,
+            p_fbSinRecordatorio = sinRecordatorio ? 1 : 0,
+            p_fiUsuarioId = fiUsuarioId
+        }, ct);
+
+    // Vistas de la pantalla Tickets (migración 99): el filtrado por vista y permiso está en el SP.
+    public Task<RespuestaSp<TicketListaModelo>> ListarVistaAsync(object filtros, CancellationToken ct = default) =>
+        _sp.EjecutarAsync<TicketListaModelo>("sp_ticket_listar_vista", filtros, ct);
+
+    public Task<RespuestaSp<TicketVistaResumenModelo>> VistasResumenAsync(int fiUsuarioId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync<TicketVistaResumenModelo>("sp_ticket_vistas_resumen", new { p_fiUsuarioId = fiUsuarioId }, ct);
+
+    public Task<RespuestaSp> PuedeVerAsync(int fiTicketId, int fiUsuarioId, CancellationToken ct = default) =>
+        _sp.EjecutarAsync("sp_ticket_puede_ver", new { p_fiTicketId = fiTicketId, p_fiUsuarioId = fiUsuarioId }, ct);
 }

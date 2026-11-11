@@ -31,7 +31,10 @@ public class CatalogoFormViewModel
     public string? FcModelo { get; set; }
     public string? FcSerie { get; set; }
 
+    // Callers: CatalogosController departamentos; _FormularioCatalogo fiAreaId
+    // User instruction: "En Departamentos el área se elige con select"
     public int? FiRegionId { get; set; }
+    public int? FiAreaId { get; set; }
     public int? FiSucursalId { get; set; }
     public int? FiUbicacionId { get; set; }
     public int? FiCategoriaId { get; set; }

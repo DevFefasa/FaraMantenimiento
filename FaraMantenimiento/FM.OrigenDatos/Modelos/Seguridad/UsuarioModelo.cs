@@ -4,6 +4,9 @@ public class UsuarioModelo
 {
     public int FiId { get; set; }
     public string FcUsuario { get; set; } = "";
+    public string? FcActiveDirectory { get; set; }
+    /// <summary>Campo que coincidió en por_login: fcUsuario o fcActiveDirectory.</summary>
+    public string? FcCampoCoincide { get; set; }
     public string FcNombre { get; set; } = "";
     public string? FcCargo { get; set; }
     public string? FcCorreo { get; set; }
@@ -12,7 +15,18 @@ public class UsuarioModelo
     public string? FcRolCodigo { get; set; }
     public string? FcRolNombre { get; set; }
     public int? FiSucursalId { get; set; }
+    public string? FcSucursalNombre { get; set; }
+    public int? FiAreaId { get; set; }
+    public string? FcAreaNombre { get; set; }
+    public int? FiDepartamentoId { get; set; }
+    public string? FcDepartamentoNombre { get; set; }
+    // Callers: SeguridadController/_FormularioUsuario/Index; sp_seguridad_usuario_*
+    // User instruction: "devolver fiJefeId y fcJefeNombre y guardar fiJefeId"
+    public int? FiJefeId { get; set; }
+    public string? FcJefeNombre { get; set; }
     public bool FbEsLocal { get; set; }
+    // Callers: SeguridadController/_FormularioUsuario; sp_seguridad_usuario_*
+    // User instruction: "Cada usuario tiene sucursal, área y departamento"
     public string? FcClaveHash { get; set; }
     public bool FbDebeCambiarClave { get; set; }
     public bool FbActivo { get; set; }

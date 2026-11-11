@@ -31,11 +31,11 @@ public static class GruposCorreo
     public const string Mantenimiento = "MANTENIMIENTO";
 }
 
-/// <summary>Plantillas HTML institucionales de Fara Mantenimiento (todas en español).</summary>
+/// <summary>Plantillas HTML institucionales de FaraFix (todas en español).</summary>
 public static class PlantillaCorreo
 {
     private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("es-HN");
-    private const string Firma = "Fara Mantenimiento · Departamento de Mantenimiento";
+    private const string Firma = "FaraFix · Departamento de Mantenimiento";
 
     private static string Fecha(DateTime? f) => f.HasValue ? f.Value.ToString("dd/MM/yyyy HH:mm", Cultura) : "—";
 
@@ -133,7 +133,7 @@ public static class PlantillaCorreo
                 tituloHtml = "Su ticket fue " + Acento("cerrado"); tituloTexto = "Su ticket fue cerrado";
                 intro = cierreAutomatico
                     ? "El ticket se cerró automáticamente porque no se validó dentro del plazo."
-                    : "El ticket quedó cerrado. Gracias por usar Fara Mantenimiento.";
+                    : "El ticket quedó cerrado. Gracias por usar FaraFix.";
                 asunto = $"Ticket {t.FcNumero} cerrado";
                 Motivo("Comentario", cierreAutomatico ? null : extra, rojo: false);
                 break;
@@ -217,11 +217,11 @@ public static class PlantillaCorreo
                 contenido.Append(Parrafo(Codificar(linea)));
         }
         var url = string.IsNullOrWhiteSpace(urlBase) ? "" : $"{urlBase.TrimEnd('/')}/Account/Login";
-        contenido.Append(Boton("Ingresar a Fara Mantenimiento", url)).Append(EnlaceAlterno(url));
+        contenido.Append(Boton("Ingresar a FaraFix", url)).Append(EnlaceAlterno(url));
         if (esBienvenida)
             contenido.Append(CajaSeguridad("La contraseña es temporal: el sistema le pedirá crear una clave personal al ingresar. No la comparta con nadie."));
 
-        var titulo = esBienvenida ? "Bienvenido a " + Acento("Fara Mantenimiento") : Codificar(asunto);
+        var titulo = esBienvenida ? "Bienvenido a " + Acento("FaraFix") : Codificar(asunto);
         var html = PlantillaBase(asunto, asunto, esBienvenida ? "Bienvenida" : "Aviso", titulo, contenido.ToString(), Firma);
         var texto = "FARA MANTENIMIENTO · FEFASA\n\n" + cuerpoPlano.Trim()
                     + (string.IsNullOrWhiteSpace(url) ? "" : $"\n\nIngresar: {url}")

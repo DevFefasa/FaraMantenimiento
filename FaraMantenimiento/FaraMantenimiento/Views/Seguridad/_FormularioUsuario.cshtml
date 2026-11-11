@@ -1,14 +1,28 @@
 @model FM.OrigenDatos.Modelos.Seguridad.UsuarioModelo
+@using FM.OrigenDatos.Modelos.Catalogos
+@using FM.OrigenDatos.Modelos.Seguridad
+@* Callers: SeguridadController.Usuario GET (PartialView/View)
+   API: POST Usuario con fiSucursalId/fiAreaId/fiDepartamentoId/fiJefeId
+   Schema: ViewBag.UsuariosJefe (activos sin el propio); usuario.fiJefeId
+   Confirm: archivo existente Views/Seguridad/_FormularioUsuario.cshtml
+   User instruction: "select2 Jefe inmediato (opcional, usuarios activos, sin el propio usuario)" *@
 @{
-    var roles = (IEnumerable<FM.OrigenDatos.Modelos.Seguridad.RolModelo>)(ViewBag.Roles ?? Array.Empty<FM.OrigenDatos.Modelos.Seguridad.RolModelo>());
+    var roles = (IEnumerable<RolModelo>)(ViewBag.Roles ?? Array.Empty<RolModelo>());
+    var combos = (CatalogoCombosModelo)(ViewBag.Combos ?? new CatalogoCombosModelo());
+    var jefes = (IEnumerable<UsuarioModelo>)(ViewBag.UsuariosJefe ?? Array.Empty<UsuarioModelo>());
     var esNuevo = Model.FiId <= 0;
 }
-<form method="post" asp-action="Usuario" class="row g-3">
+<form method="post" asp-action="Usuario" class="row g-3" id="formUsuario">
     @Html.AntiForgeryToken()
     <input type="hidden" name="fiId" value="@Model.FiId" />
     <div class="col-12 col-md-6">
         <label class="form-label">Usuario</label>
         <input name="fcUsuario" class="form-control" value="@Model.FcUsuario" required maxlength="100" autocomplete="username" />
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Usuario de Active Directory</label>
+        <input name="fcActiveDirectory" class="form-control" value="@Model.FcActiveDirectory" maxlength="100" autocomplete="off" />
+        <div class="form-text">Con este usuario podrá entrar usando su contraseña de dominio.</div>
     </div>
     <div class="col-12 col-md-6">
         <label class="form-label">Nombre</label>
@@ -44,6 +58,45 @@
         </select>
     </div>
     <div class="col-12 col-md-6">
+        <label class="form-label">Sucursal</label>
+        <select name="fiSucursalId" class="form-select" required>
+            <option value="">Seleccione...</option>
+            @foreach (var s in combos.Sucursales.Where(x => x.FcTipo == "SUCURSAL" || string.IsNullOrEmpty(x.FcTipo)))
+            {
+                if (Model.FiSucursalId == s.FiId) { <option value="@s.FiId" selected>@s.FcNombre</option> }
+                else { <option value="@s.FiId">@s.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Área</label>
+        <select name="fiAreaId" id="fiAreaId" class="form-select" required>
+            <option value="">Seleccione...</option>
+            @foreach (var a in combos.Areas)
+            {
+                if (Model.FiAreaId == a.FiId) { <option value="@a.FiId" selected>@a.FcNombre</option> }
+                else { <option value="@a.FiId">@a.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Departamento</label>
+        <select name="fiDepartamentoId" id="fiDepartamentoId" class="form-select" required>
+            <option value="">Seleccione...</option>
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label" for="fiJefeId">Jefe inmediato</label>
+        <select name="fiJefeId" id="fiJefeId" class="form-select">
+            <option value="">(Opcional)</option>
+            @foreach (var j in jefes)
+            {
+                if (Model.FiJefeId == j.FiId) { <option value="@j.FiId" selected>@j.FcNombre (@j.FcUsuario)</option> }
+                else { <option value="@j.FiId">@j.FcNombre (@j.FcUsuario)</option> }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-6">
         <label class="form-label">@(esNuevo ? "Contraseña" : "Nueva contraseña (opcional)")</label>
         <input name="contrasenaNueva" type="password" class="form-control" autocomplete="new-password" />
         <div class="form-text">@(esNuevo ? "Si queda vacía se genera una aleatoria y se encola el correo de bienvenida." : "Deje vacío para no cambiarla.")</div>
@@ -53,3 +106,31 @@
         <a asp-action="Index" class="btn btn-outline-secondary" data-fara-cancelar style="min-height:40px">Cancelar</a>
     </div>
 </form>
+<script type="application/json" id="usuario-departamentos">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(combos.Departamentos.Select(d => new { d.FiId, d.FcNombre, d.FiAreaId })))</script>
+<script>
+(function () {
+    var selArea = document.getElementById('fiAreaId');
+    var selDepto = document.getElementById('fiDepartamentoId');
+    if (!selArea || !selDepto) return;
+    var deptos = [];
+    try {
+        var el = document.getElementById('usuario-departamentos');
+        deptos = el ? JSON.parse(el.textContent || '[]') : [];
+    } catch (e) { deptos = []; }
+    var selected = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FiDepartamentoId));
+    function fill() {
+        var areaId = parseInt(selArea.value || '0', 10) || 0;
+        var keep = selected;
+        selDepto.innerHTML = '<option value="">Seleccione...</option>';
+        deptos.filter(function (d) { return !areaId || d.FiAreaId === areaId; }).forEach(function (d) {
+            var opt = document.createElement('option');
+            opt.value = d.FiId;
+            opt.textContent = d.FcNombre;
+            if (keep && keep === d.FiId) opt.selected = true;
+            selDepto.appendChild(opt);
+        });
+    }
+    selArea.addEventListener('change', function () { selected = null; fill(); });
+    fill();
+})();
+</script>

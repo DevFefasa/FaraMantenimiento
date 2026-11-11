@@ -1,4 +1,4 @@
-/* Fara Mantenimiento PWA — cache solo assets estáticos; nunca HTML autenticado ni POST. */
+/* FaraFix PWA — cache solo assets estáticos; nunca HTML autenticado ni POST. */
 const CACHE = 'fara-static-v2';
 const STATIC_EXT = /\.(?:css|js|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|webp|ico|webmanifest)$/i;
 

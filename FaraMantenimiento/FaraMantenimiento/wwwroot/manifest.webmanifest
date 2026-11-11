@@ -1,7 +1,7 @@
 {
-  "name": "Fara Mantenimiento",
-  "short_name": "Fara Mant.",
-  "description": "Tickets de mantenimiento Ferretería FARA",
+  "name": "FaraFix",
+  "short_name": "FaraFix",
+  "description": "FaraFix · Tickets de mantenimiento FEFASA",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

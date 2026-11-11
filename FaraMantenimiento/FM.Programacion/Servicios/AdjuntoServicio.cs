@@ -66,7 +66,7 @@ public class AdjuntoServicio
 
     private string RutaBaseAbsoluta()
     {
-        var basePath = string.IsNullOrWhiteSpace(_opt.RutaBase) ? "C:/FaraMantenimiento/Adjuntos" : _opt.RutaBase;
+        var basePath = string.IsNullOrWhiteSpace(_opt.RutaBase) ? "C:/documentosAdjuntos/FaraMantenimiento" : _opt.RutaBase;
         var abs = Path.IsPathRooted(basePath) ? basePath : Path.Combine(_env.ContentRootPath, basePath);
         return Path.GetFullPath(abs);
     }

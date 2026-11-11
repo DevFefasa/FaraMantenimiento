@@ -41,6 +41,29 @@
             }
         </select>
     </div>
+    @* Callers: Reportes/Index; User instruction: "filtro por Área (y Departamento si es sencillo)" *@
+    <div class="col-12 col-md-3 col-xl-2">
+        <label class="form-label">Área</label>
+        <select name="FiAreaId" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var a in combos.Areas)
+            {
+                if (filtro.FiAreaId == a.FiId) { <option value="@a.FiId" selected>@a.FcNombre</option> }
+                else { <option value="@a.FiId">@a.FcNombre</option> }
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-3 col-xl-2">
+        <label class="form-label">Departamento</label>
+        <select name="FiDepartamentoId" class="form-select">
+            <option value="">Todos</option>
+            @foreach (var d in combos.Departamentos)
+            {
+                if (filtro.FiDepartamentoId == d.FiId) { <option value="@d.FiId" selected>@d.FcNombre</option> }
+                else { <option value="@d.FiId">@d.FcNombre</option> }
+            }
+        </select>
+    </div>
     <div class="col-6 col-md-3 col-xl-2">
         <label class="form-label">Tipo</label>
         <select name="FiTipoMantenimientoId" class="form-select">

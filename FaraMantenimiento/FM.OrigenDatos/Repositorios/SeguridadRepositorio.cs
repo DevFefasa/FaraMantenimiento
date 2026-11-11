@@ -42,19 +42,26 @@ public class SeguridadRepositorio
     public Task<RespuestaSp<UsuarioModelo>> ObtenerUsuarioAsync(int fiId, CancellationToken ct = default) =>
         _sp.EjecutarAsync<UsuarioModelo>("sp_seguridad_usuario_obtener", new { p_fiId = fiId }, ct);
 
+    // Callers: SeguridadServicio.GuardarUsuarioAsync / GuardarHashAsync → sp_seguridad_usuario_guardar
+    // Schema: p_fiSucursalId, p_fiAreaId, p_fiDepartamentoId, p_fiJefeId (opcionales)
+    // User instruction: "devolver fiJefeId y fcJefeNombre y guardar fiJefeId"
     public Task<RespuestaSp> GuardarUsuarioAsync(
-        int? fiId, string fcUsuario, string fcNombre, string? fcCargo, string? fcCorreo, string? fcTelefono,
-        int fiRolId, int? fiSucursalId, bool fbEsLocal, string? fcClaveHash, bool? fbDebeCambiarClave, int fiUsuarioId, CancellationToken ct = default) =>
+        int? fiId, string fcUsuario, string? fcActiveDirectory, string fcNombre, string? fcCargo, string? fcCorreo, string? fcTelefono,
+        int fiRolId, int? fiSucursalId, int? fiAreaId, int? fiDepartamentoId, int? fiJefeId, bool fbEsLocal, string? fcClaveHash, bool? fbDebeCambiarClave, int fiUsuarioId, CancellationToken ct = default) =>
         _sp.EjecutarAsync("sp_seguridad_usuario_guardar", new
         {
             p_fiId = fiId ?? 0,
             p_fcUsuario = fcUsuario,
+            p_fcActiveDirectory = fcActiveDirectory,
             p_fcNombre = fcNombre,
             p_fcCargo = fcCargo,
             p_fcCorreo = fcCorreo,
             p_fcTelefono = fcTelefono,
             p_fiRolId = fiRolId,
             p_fiSucursalId = fiSucursalId,
+            p_fiAreaId = fiAreaId,
+            p_fiDepartamentoId = fiDepartamentoId,
+            p_fiJefeId = fiJefeId,
             p_fbEsLocal = fbEsLocal ? 1 : 0,
             p_fcClaveHash = fcClaveHash,
             p_fbDebeCambiarClave = fbDebeCambiarClave.HasValue ? (fbDebeCambiarClave.Value ? 1 : 0) : (int?)null,
